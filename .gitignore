@@ -1,0 +1,6 @@
+.DS_store
+compile_commands.json
+cscope*
+*.o
+.vscode/
+.cache/
