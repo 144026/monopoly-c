@@ -1,5 +1,6 @@
 #include "common.h"
 #include "ui.h"
+#include "map.h"
 #include <time.h>
 
 int g_game_stop;
@@ -8,12 +9,16 @@ int g_game_stop;
 #define INPUT_BUF_SIZE (MAX_INPUT_LEN + 2)
 static char g_input_buf[INPUT_BUF_SIZE];
 
+static struct map g_map;
+
 int main(void)
 {
     const char *line = NULL;
 
     srand(time(NULL));
     setlinebuf(stdin);
+
+    init_map(&g_map);
 
     while (!g_game_stop) {
         line = grab_line(stdin, g_input_buf, INPUT_BUF_SIZE);
@@ -27,5 +32,6 @@ int main(void)
         }
     }
 
+    uninit_map(&g_map);
     return 0;
 }
