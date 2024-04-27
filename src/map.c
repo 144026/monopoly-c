@@ -1,4 +1,5 @@
 #include "common.h"
+#include "player.h"
 #include "map.h"
 
 static const struct map_layout g_default_map_layout = {
@@ -67,8 +68,9 @@ static void map_node_init(struct map_node *node, int idx, enum node_type type, i
 
     node->level = ESTATE_INVALID;
     node->owner = NULL;
-    node->item = ITEM_INVALID;
+    INIT_LIST_HEAD(&node->player_list);
 
+    node->item = ITEM_INVALID;
     if (type == MAP_NODE_VACANCY)
         node->price = v;
     else if (type == MAP_NODE_MINE)
@@ -176,7 +178,7 @@ static int map_init(struct map *map, const struct map_layout *layout)
 
     ret = map_fill_layout(map, layout);
     if (ret) {
-        game_err("fail to fill map layout");
+        game_err("fail to fill map layout\n");
         goto out_free;
     }
 
@@ -215,6 +217,7 @@ static void map_node_render(struct map *map, unsigned line, unsigned col)
 {
     int pos = -1;
     struct map_node *node;
+    struct player *player;
 
     if (line == 0) {
         pos = col;
@@ -232,12 +235,53 @@ static void map_node_render(struct map *map, unsigned line, unsigned col)
     }
 
     if (pos >= map->n_used) {
-        game_err("line %u column %u calculated node idx %d > map->n_used %d", line, col, pos, map->n_used);
+        game_err("line %u column %u calculated node idx %d > map->n_used %d\n", line, col, pos, map->n_used);
         return;
     }
 
     node = &map->nodes[pos];
-    putchar(node_render_tab[node->type]);
+    if (list_empty(&node->player_list)) {
+        putchar(node_render_tab[node->type]);
+        return;
+    }
+
+    player = list_first_entry(&node->player_list, struct player, pos_list);
+    putchar(player_render_id(player));
+}
+
+int map_attach_player(struct map *map, struct player *player)
+{
+    struct map_node *node;
+
+    if (player->attached)
+        return -1;
+    if (player->pos < 0 || player->pos >= map->n_used)
+        return -1;
+
+    node = &map->nodes[player->pos];
+    list_add(&player->pos_list, &node->player_list);
+    player->attached = 1;
+
+    return 0;
+}
+
+int map_detach_player(struct map *map, struct player *player)
+{
+    struct map_node *node;
+
+    if (!player->attached)
+        return -1;
+    if (player->pos < 0 || player->pos >= map->n_used)
+        return -1;
+
+    node = &map->nodes[player->pos];
+    if (list_empty(&node->player_list))
+        return -1;
+
+    list_del_init(&player->pos_list);
+    player->attached = 0;
+
+    return 0;
 }
 
 void map_render(struct map *map)

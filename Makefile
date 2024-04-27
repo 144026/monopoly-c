@@ -3,6 +3,7 @@ SRCS := $(foreach mod,$(SUBMOD),$(wildcard $(mod)/*.c))
 HEADERS := $(foreach mod,$(SUBMOD),$(wildcard $(mod)/*.h))
 
 CFLAGS := $(foreach mod,$(SUBMOD),-I$(mod))
+CFLAGS += -g
 OBJS := $(foreach src,$(SRCS),$(patsubst %.c,%.o,$(src)))
 
 PROGS := monopoly
@@ -35,7 +36,7 @@ all: $(PROGS)
 monopoly: $(OBJS)
 	$(call cmd,ld)
 
-$(OBJS): %.o: %.c $(HEADERS)
+$(OBJS): %.o: %.c $(HEADERS) Makefile
 	$(call cmd,cc)
 
 clean:

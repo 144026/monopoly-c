@@ -1,5 +1,6 @@
 #include "common.h"
 #include "ui.h"
+#include "player.h"
 #include "map.h"
 #include <time.h>
 
@@ -13,6 +14,7 @@ static struct map g_map;
 
 int main(void)
 {
+    int i;
     const char *line = NULL;
 
     srand(time(NULL));
@@ -21,6 +23,15 @@ int main(void)
     if (init_map(&g_map)) {
         game_err("fail to init map\n");
         return -1;
+    }
+
+    /* TODO */
+    for (i = 0; i < 4; i++) {
+        if (add_player(i)) {
+            game_err("fail to add player %d\n", i);
+            return -2;
+        }
+        map_attach_player(&g_map, get_player(i));
     }
 
     while (!g_game_stop) {
@@ -37,6 +48,7 @@ int main(void)
         }
     }
 
+    del_all_players(&g_map);
     uninit_map(&g_map);
     return 0;
 }
