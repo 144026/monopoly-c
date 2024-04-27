@@ -119,5 +119,3 @@ void uninit_map(struct map *map);
 
 int map_attach_player(struct map *map, struct player *player);
 int map_detach_player(struct map *map, struct player *player);
-
-void map_render(struct map *map);
