@@ -51,8 +51,9 @@ struct map_node {
 
     enum estate_level level;
     struct player *owner;
+    struct list_head estates_list;
 
-    struct list_head player_list;
+    struct list_head players;
     enum item_type item;
     union {
         int price;
@@ -113,6 +114,8 @@ struct map_layout {
     int n_area;
     struct map_area areas[MAP_MAX_AREA];
 };
+
+extern struct map g_map;
 
 int init_map(struct map *map);
 void uninit_map(struct map *map);

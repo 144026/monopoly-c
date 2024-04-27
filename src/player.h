@@ -16,7 +16,7 @@ struct asset {
     int n_money;
     int n_points;
     int n_estate;
-    struct map_node *estates;
+    struct list_head estates;
 
     int n_block;
     int n_bomb;
@@ -59,5 +59,22 @@ int del_player(int idx);
 int del_all_players(struct map *map);
 
 struct player *get_player(int idx);
+
+extern int g_player_nr;
+extern struct player *g_cur_players[PLAYER_MAX];
+extern struct player *g_next_player;
+
+#define for_each_arr_entry(ent, arr, size) \
+    for ((ent) = (arr); (ent) - (arr) < size; (ent)++)
+
+#define for_each_player(pplayer) for_each_arr_entry(pplayer, g_cur_players, g_player_nr)
+
+#define for_each_player_begin(player) { \
+    struct player *const *_pplayer; \
+    for_each_player(_pplayer) { \
+        player = *_pplayer; \
+
+#define for_each_player_end() }}
+
 
 int player_render_id(struct player *player);

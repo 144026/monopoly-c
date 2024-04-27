@@ -10,8 +10,6 @@ int g_game_stop;
 #define INPUT_BUF_SIZE (MAX_INPUT_LEN + 2)
 static char g_input_buf[INPUT_BUF_SIZE];
 
-static struct map g_map;
-
 int main(void)
 {
     int i;
@@ -25,7 +23,8 @@ int main(void)
         return -1;
     }
 
-    /* TODO */
+    /* TODO: delete test code */
+    g_map.nodes[2].item = ITEM_BLOCK;
     for (i = 0; i < 4; i++) {
         if (add_player(i)) {
             game_err("fail to add player %d\n", i);
@@ -33,6 +32,7 @@ int main(void)
         }
         map_attach_player(&g_map, get_player(i));
     }
+    g_next_player = get_player(0);
 
     while (!g_game_stop) {
         map_render(&g_map);
@@ -47,6 +47,9 @@ int main(void)
             break;
         }
     }
+
+    /* TODO: delete test code */
+    dump_exit();
 
     del_all_players(&g_map);
     uninit_map(&g_map);

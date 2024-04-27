@@ -89,12 +89,12 @@ static void map_node_render(struct map *map, unsigned line, unsigned col)
     }
 
     node = &map->nodes[pos];
-    if (list_empty(&node->player_list)) {
+    if (list_empty(&node->players)) {
         putchar(node_render_tab[node->type]);
         return;
     }
 
-    player = list_first_entry(&node->player_list, struct player, pos_list);
+    player = list_first_entry(&node->players, struct player, pos_list);
     putchar(player_render_id(player));
 }
 
@@ -107,4 +107,66 @@ void map_render(struct map *map)
             map_node_render(map, line, col);
         putchar('\n');
     }
+}
+
+void dump_exit_player_asset(int id_char, struct asset *asset)
+{
+    struct map_node *estate;
+
+    list_for_each_entry(estate, &asset->estates, estates_list) {
+        fprintf(stderr, "map %d %c %d\n", estate->idx, id_char, estate->level);
+    }
+    fprintf(stderr, "fund %c %d\n", id_char, asset->n_money);
+    fprintf(stderr, "credit %c %d\n", id_char, asset->n_points);
+}
+
+void dump_exit_player_item(int id_char, struct asset *asset)
+{
+    if (asset->n_bomb)
+        fprintf(stderr, "gift %c bomb %d\n", id_char, asset->n_bomb);
+
+    if (asset->n_block)
+        fprintf(stderr, "gift %c block %d\n", id_char, asset->n_block);
+
+    if (asset->n_robot)
+        fprintf(stderr, "gift %c robot %d\n", id_char, asset->n_robot);
+}
+
+void dump_exit_player(struct player *player)
+{
+    struct map_node *node;
+    int id_char = player_render_id(player);
+
+    dump_exit_player_asset(id_char, &player->asset);
+    fprintf(stderr, "userloc %c %d %d\n", id_char, player->pos, player->buff.n_empty_rounds);
+
+    dump_exit_player_item(id_char, &player->asset);
+    if (player->buff.n_god_buff + player->buff.b_god_buff)
+        fprintf(stderr, "gift %c god %d\n", id_char, player->buff.n_god_buff + player->buff.b_god_buff);
+}
+
+void dump_exit(void)
+{
+    int i;
+    struct map_node *node;
+    struct player *player;
+
+    fprintf(stderr, "user ");
+    for_each_player_begin(player) {
+        fprintf(stderr, "%c", player_render_id(player));
+    } for_each_player_end()
+    fprintf(stderr, "\n");
+
+    for_each_player_begin(player) {
+        dump_exit_player(player);
+    } for_each_player_end()
+
+    for (i = 0; i < g_map.n_used; i++) {
+        node = &g_map.nodes[i];
+        if (node->item == ITEM_BLOCK)
+            fprintf(stderr, "barrier %d\n", node->idx);
+    }
+
+    fprintf(stderr, "nextuser %c", player_render_id(g_next_player));
+    exit(EXIT_SUCCESS);
 }

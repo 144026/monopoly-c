@@ -75,6 +75,6 @@ static inline void list_move_tail(struct list_head *node, struct list_head *head
     for (node = (head)->next; node != (head); node = node->next)
 
 #define list_for_each_entry(container, head, field) \
-    for (container = list_entry((head)->next, typeof(*container), field; \
+    for (container = list_entry((head)->next, typeof(*container), field); \
         &container->field != (head); \
         container = list_entry(container->field.next, typeof(*container), field))

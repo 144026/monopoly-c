@@ -2,8 +2,9 @@
 #include "player.h"
 #include "map.h"
 
-static int g_player_nr;
-static struct player *g_cur_players[PLAYER_MAX];
+int g_player_nr;
+struct player *g_cur_players[PLAYER_MAX];
+struct player *g_next_player;
 
 static struct player g_players[PLAYER_MAX];
 
@@ -35,7 +36,7 @@ int player_render_id(struct player *player)
 {
     const char *id;
 
-    if (player->idx < 0 || player->idx > PLAYER_MAX)
+    if (!player || player->idx < 0 || player->idx > PLAYER_MAX)
         return '?';
 
     id = g_player_ids[player->idx];
@@ -89,6 +90,7 @@ static int player_asset_init(struct asset *asset)
 {
     memset(asset, 0, sizeof(*asset));
     asset->n_money = g_default_money;
+    INIT_LIST_HEAD(&asset->estates);
     return 0;
 }
 

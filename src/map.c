@@ -2,6 +2,8 @@
 #include "player.h"
 #include "map.h"
 
+struct map g_map;
+
 static const struct map_layout g_default_map_layout = {
     .map_size = 70,
     .map_width = 29,
@@ -68,8 +70,9 @@ static void map_node_init(struct map_node *node, int idx, enum node_type type, i
 
     node->level = ESTATE_INVALID;
     node->owner = NULL;
-    INIT_LIST_HEAD(&node->player_list);
+    INIT_LIST_HEAD(&node->estates_list);
 
+    INIT_LIST_HEAD(&node->players);
     node->item = ITEM_INVALID;
     if (type == MAP_NODE_VACANCY)
         node->price = v;
@@ -211,7 +214,7 @@ int map_attach_player(struct map *map, struct player *player)
         return -1;
 
     node = &map->nodes[player->pos];
-    list_add(&player->pos_list, &node->player_list);
+    list_add(&player->pos_list, &node->players);
     player->attached = 1;
 
     return 0;
@@ -227,7 +230,7 @@ int map_detach_player(struct map *map, struct player *player)
         return -1;
 
     node = &map->nodes[player->pos];
-    if (list_empty(&node->player_list))
+    if (list_empty(&node->players))
         return -1;
 
     list_del_init(&player->pos_list);
