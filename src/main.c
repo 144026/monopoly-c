@@ -18,9 +18,14 @@ int main(void)
     srand(time(NULL));
     setlinebuf(stdin);
 
-    init_map(&g_map);
+    if (init_map(&g_map)) {
+        game_err("fail to init map\n");
+        return -1;
+    }
 
     while (!g_game_stop) {
+        map_render(&g_map);
+
         line = grab_line(stdin, g_input_buf, INPUT_BUF_SIZE);
         if (line)
             game_dbg("read line: %s", line);

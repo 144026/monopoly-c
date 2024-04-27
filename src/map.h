@@ -58,11 +58,17 @@ struct map_node {
 
 #define MAP_MAX_NODE    512
 
+#define MAP_MIN_WIDTH   2
+#define MAP_MIN_HEIGHT  2
+
 struct map {
     int n_node;
     struct map_node *nodes;
 
     int n_used;
+    /* corner is counted in both w/h */
+    unsigned int width;
+    unsigned int height;
 };
 
 struct map_area {
@@ -76,6 +82,7 @@ struct map_area {
 
 struct map_layout {
     int map_size;
+    int map_width;
 
     int n_start;
     int pos_start[MAP_MAX_SPECIAL];
@@ -105,3 +112,5 @@ struct map_layout {
 
 int init_map(struct map *map);
 void uninit_map(struct map *map);
+
+void map_render(struct map *map);

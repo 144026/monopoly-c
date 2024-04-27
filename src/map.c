@@ -3,6 +3,7 @@
 
 static const struct map_layout g_default_map_layout = {
     .map_size = 70,
+    .map_width = 29,
 
     .n_start = 1,
     .n_hospital = 1,
@@ -84,8 +85,22 @@ static int map_fill_layout(struct map *map, const struct map_layout *layout)
         game_err("map layout size %d > map capacity %d\n", layout->map_size, map->n_node);
         return -1;
     }
-
+    if (layout->map_size & 1) {
+        game_err("map layout size %d must be even number\n", layout->map_size);
+        return -1;
+    }
     map->n_used = layout->map_size;
+
+    if (layout->map_width < MAP_MIN_WIDTH) {
+        game_err("map width %d too small\n", layout->map_width);
+        return -1;
+    }
+    if (layout->map_width * 2 > layout->map_size) {
+        game_err("map width %d too big\n", layout->map_width);
+        return -1;
+    }
+    map->width = layout->map_width;
+    map->height = 2 + (layout->map_size - layout->map_width * 2) / 2;
 
     for (i = 0; i < map->n_node; i++) {
         map_node_init(&map->nodes[i], i, MAP_NODE_INVALID, 0);
@@ -182,4 +197,56 @@ void uninit_map(struct map *map)
 {
     map->n_used = 0;
     map_free(map);
+}
+
+static const char node_render_tab[MAP_NODE_MAX] = {
+    [MAP_NODE_START] = 'S',
+    [MAP_NODE_VACANCY] = '0',
+    [MAP_NODE_ITEM_HOUSE] = 'T',
+    [MAP_NODE_GIFT_HOUSE] = 'G',
+    [MAP_NODE_MAGIC_HOUSE] = 'M',
+    [MAP_NODE_HOSPITAL] = 'H',
+    [MAP_NODE_PRISON] = 'P',
+    [MAP_NODE_MINE] = '$',
+    [MAP_NODE_PARK] = 'P',
+};
+
+static void map_node_render(struct map *map, unsigned line, unsigned col)
+{
+    int pos = -1;
+    struct map_node *node;
+
+    if (line == 0) {
+        pos = col;
+    } else if (line == map->height - 1) {
+        pos = map->n_used - (map->height - 1) - col;
+    } else if (col == 0) {
+        pos = map->n_used - line;
+    } else if (col == map->width - 1) {
+        pos = map->width + (line - 1);
+    }
+
+    if (pos < 0) {
+        putchar(' ');
+        return;
+    }
+
+    if (pos >= map->n_used) {
+        game_err("line %u column %u calculated node idx %d > map->n_used %d", line, col, pos, map->n_used);
+        return;
+    }
+
+    node = &map->nodes[pos];
+    putchar(node_render_tab[node->type]);
+}
+
+void map_render(struct map *map)
+{
+    int line, col;
+
+    for (line = 0; line < map->height; line++) {
+        for (col = 0; col < map->width; col++)
+            map_node_render(map, line, col);
+        putchar('\n');
+    }
 }
