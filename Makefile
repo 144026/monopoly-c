@@ -2,6 +2,7 @@ SUBMOD := src
 SRCS := $(foreach mod,$(SUBMOD),$(wildcard $(mod)/*.c))
 HEADERS := $(foreach mod,$(SUBMOD),$(wildcard $(mod)/*.h))
 
+CFLAGS := $(foreach mod,$(SUBMOD),-I$(mod))
 OBJS := $(foreach src,$(SRCS),$(patsubst %.c,%.o,$(src)))
 
 PROGS := monopoly
