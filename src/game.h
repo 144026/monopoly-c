@@ -28,6 +28,9 @@ struct game {
     int default_money;
 };
 
+#define GAME_PLAYER_MIN 2
+#define GAME_PLAYER_MAX 4
+
 /* raw player creation/deletion, unattached */
 int game_add_player(struct game *game, int idx);
 int game_del_player(struct game *game, int idx);

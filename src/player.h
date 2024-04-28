@@ -53,6 +53,7 @@ struct player {
 int player_init(struct player *player, int idx, int n_money);
 int player_uninit(struct player *player);
 int player_id_to_char(struct player *player);
+int player_char_id_to_idx(int c);
 
 #define for_each_arr_entry(ent, arr, size) \
     for ((ent) = (arr); (ent) - (arr) < size; (ent)++)

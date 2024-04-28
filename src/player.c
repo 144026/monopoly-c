@@ -39,6 +39,25 @@ int player_id_to_char(struct player *player)
     return '?';
 }
 
+int player_char_id_to_idx(int c) {
+    int i;
+    const char *id;
+
+    if (c <= 0 || !isprint(c))
+        return -1;
+
+    for (i = 0; i < PLAYER_MAX; i++) {
+        id = g_player_ids[i];
+        if (!id)
+            continue;
+
+        if (c == id[0])
+            return i;
+    }
+
+    return -1;
+}
+
 static int player_add_name(struct player *player)
 {
     int idx = player->idx;
