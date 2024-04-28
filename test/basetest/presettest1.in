@@ -1,0 +1,20 @@
+preset user AQSJ
+
+preset fund A 100
+preset credit Q 20
+preset credit S 100
+
+preset
+
+step 12
+y
+step 2
+y
+step 28
+1
+2
+step 1
+n
+block 3
+preset user AQ
+dump

@@ -1,0 +1,19 @@
+{
+    "name": "v1",
+    "maxlevel": 1000,
+    "import": [
+        "basetest",
+        "estate_business",
+        "bankrupt",
+        "sell_house",
+        "barrier",
+        "gift",
+        "god",
+        "magic_house",
+        "mine",
+        "park",
+        "robot",
+        "tool_house"
+    ],
+    "case": []
+}

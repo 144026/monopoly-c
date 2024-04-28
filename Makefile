@@ -45,8 +45,11 @@ monopoly: $(OBJS)
 $(OBJS): %.o: %.c $(HEADERS) Makefile
 	$(call cmd,cc)
 
+test: _default
+	@python3 test/autotest.py -d test -n monopoly
+
 clean:
 	$(call cmd,rm,$(OBJS))
 	$(call cmd,rm,$(PROGS))
 
-.PHONY: _default all debug clean
+.PHONY: _default all debug test clean

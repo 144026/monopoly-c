@@ -216,11 +216,15 @@ void dump_exit(struct game *game)
     struct map_node *node;
     struct player *player;
 
-    fprintf(stderr, "user ");
+    if (game->cur_player_nr)
+        fprintf(stderr, "user ");
+
     for_each_player_begin(game, player) {
         fprintf(stderr, "%c", player_id_to_char(player));
     } for_each_player_end()
-    fprintf(stderr, "\n");
+
+    if (game->cur_player_nr)
+        fprintf(stderr, "\n");
 
     for_each_player_begin(game, player) {
         dump_exit_player(player);
@@ -232,6 +236,7 @@ void dump_exit(struct game *game)
             fprintf(stderr, "barrier %d\n", node->idx);
     }
 
-    fprintf(stderr, "nextuser %c\n", player_id_to_char(game->next_player));
+    if (game->cur_player_nr)
+        fprintf(stderr, "nextuser %c\n", player_id_to_char(game->next_player));
     exit(EXIT_SUCCESS);
 }
