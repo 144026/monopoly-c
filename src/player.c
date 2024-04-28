@@ -28,18 +28,22 @@ int player_id_to_char(struct player *player)
 {
     const char *id;
 
-    if (!player || player->idx < 0 || player->idx > PLAYER_MAX)
+    if (!player || !player->valid)
         return '?';
 
-    id = g_player_ids[player->idx];
-    if (id)
-        return id[0];
+    if (player->idx < 0 || player->idx > PLAYER_MAX)
+        return '?';
 
-    game_err("player id %d too big, render not implemented\n", player->idx);
-    return '?';
+    if (!player->id || !player->id[0])
+        return '?';
+
+    if (!g_player_ids[player->idx])
+        game_err("player idx %d too big, short name id not implemented\n", player->idx);
+
+    return player->id[0];
 }
 
-int player_char_id_to_idx(int c) {
+int player_char_to_idx(int c) {
     int i;
     const char *id;
 
@@ -48,10 +52,8 @@ int player_char_id_to_idx(int c) {
 
     for (i = 0; i < PLAYER_MAX; i++) {
         id = g_player_ids[i];
-        if (!id)
-            continue;
 
-        if (c == id[0])
+        if (id && c == id[0])
             return i;
     }
 
@@ -97,10 +99,9 @@ int player_del_name(struct player *player)
     return 0;
 }
 
-static int player_asset_init(struct asset *asset, int n_money)
+static int player_asset_init(struct asset *asset)
 {
     memset(asset, 0, sizeof(*asset));
-    asset->n_money = n_money;
     INIT_LIST_HEAD(&asset->estates);
     return 0;
 }
@@ -111,9 +112,11 @@ static int player_buff_init(struct buff *buff)
     return 0;
 }
 
-int player_init(struct player *player, int idx, int n_money)
+int player_init(struct player *player, int idx, int seq)
 {
     player->idx = idx;
+    player->seq = seq;
+    player->id = g_player_ids[idx];
     player_add_name(player);
     player->color = g_player_colors[idx];
 
@@ -121,7 +124,7 @@ int player_init(struct player *player, int idx, int n_money)
     player->attached = 0;
     INIT_LIST_HEAD(&player->pos_list);
 
-    player_asset_init(&player->asset, n_money);
+    player_asset_init(&player->asset);
     player_buff_init(&player->buff);
 
     player->valid = 1;
@@ -131,6 +134,7 @@ int player_init(struct player *player, int idx, int n_money)
 int player_uninit (struct player *player)
 {
     player->valid = 0;
+    player->id = NULL;
     return player_del_name(player);
 }
 

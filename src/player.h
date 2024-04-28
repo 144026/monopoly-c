@@ -12,6 +12,8 @@ enum player_color {
     PLAYER_COLOR_MAX,
 };
 
+#define PLAYER_MAX_ITEM 10
+
 struct asset {
     int n_money;
     int n_points;
@@ -36,6 +38,8 @@ struct player {
     int valid;
 
     int idx;
+    int seq;
+    const char *id;
     const char *name;
     enum player_color color;
 
@@ -50,10 +54,10 @@ struct player {
 #define PLAYER_MAX 16
 #define DEFAULT_MONEY 10000
 
-int player_init(struct player *player, int idx, int n_money);
+int player_init(struct player *player, int idx, int seq);
 int player_uninit(struct player *player);
 int player_id_to_char(struct player *player);
-int player_char_id_to_idx(int c);
+int player_char_to_idx(int c);
 
 #define for_each_arr_entry(ent, arr, size) \
     for ((ent) = (arr); (ent) - (arr) < size; (ent)++)

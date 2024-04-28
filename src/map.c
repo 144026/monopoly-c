@@ -230,3 +230,80 @@ int map_detach_player(struct map *map, struct player *player)
     return 0;
 }
 
+int map_move_player(struct map *map, struct player *player, int pos)
+{
+    int ret;
+
+    if (pos < 0 || pos >= map->n_used)
+        return -1;
+
+    ret = map_detach_player(map, player);
+    if (ret)
+        return ret;
+
+    player->pos = pos;
+    return map_attach_player(map, player);
+}
+
+int map_place_item(struct map *map, int pos, enum item_type item)
+{
+    struct map_node *node;
+
+    if (pos < 0 || pos >= map->n_used)
+        return -1;
+
+    if (item <= ITEM_INVALID || item >= ITEM_MAX)
+        return -1;
+
+    node = &map->nodes[pos];
+    if (node->type != MAP_NODE_VACANCY) {
+        game_err("map pos %d type %d, item %d not allowed\n", pos, node->type, item);
+        return -1;
+    }
+    if (!list_empty(&node->players)) {
+        game_err("map pos %d has players, item %d not allowed\n", pos, item);
+        return -1;
+    }
+    if (node->item != ITEM_INVALID) {
+        game_err("map pos %d already has item %d, item %d not allowed\n", pos, node->item, item);
+        return -1;
+    }
+
+    node->item = item;
+    return 0;
+}
+
+int map_set_owner(struct map *map, int pos, struct player *owner)
+{
+    struct map_node *node;
+
+    if (pos < 0 || pos >= map->n_used)
+        return -1;
+
+    if (!owner->valid) {
+        game_err("player %d not valid\n", owner->idx);
+        return -1;
+    }
+    if (!owner->attached) {
+        game_err("player %d not attached to map\n", owner->idx);
+        return -1;
+    }
+
+    node = &map->nodes[pos];
+    if (node->type != MAP_NODE_VACANCY) {
+        game_err("map pos %d type %d, owner not allowed\n", pos, node->type);
+        return -1;
+    }
+
+    if (node->owner && node->owner != owner) {
+        game_err("map pos %d alreadly owned by other player %d\n", pos, node->owner->idx);
+        return -1;
+    }
+
+    if (owner != node->owner) {
+        node->owner = owner;
+        list_add_tail(&node->estates_list, &owner->asset.estates);
+    }
+    return 0;
+}
+

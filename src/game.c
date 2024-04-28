@@ -33,7 +33,8 @@ int game_add_player(struct game *game, int idx)
     if (player->valid)
         return -2;
 
-    player_init(player, idx, game->default_money);
+    player_init(player, idx, game->cur_player_nr);
+    player->asset.n_money = game->default_money;
 
     game->cur_players[game->cur_player_nr] = player;
     game->cur_player_nr++;
@@ -52,6 +53,17 @@ struct player *game_get_player(struct game *game, int idx)
         return NULL;
 
     return player;
+}
+
+struct player *game_get_player_by_id(struct game *game, const char *id)
+{
+    struct player *player;
+
+    for_each_player_begin(game, player) {
+        if (0 == strcmp(player->id, id))
+            return player;
+    } for_each_player_end()
+    return NULL;
 }
 
 int game_rotate_player(struct game *game)
@@ -86,6 +98,19 @@ again:
 
     game->next_player_seq = next;
     game->next_player = player;
+    return 0;
+}
+
+int game_set_next_player(struct game *game, struct player *player)
+{
+    if (!player->valid || !player->attached)
+        return -1;
+
+    if (player->seq < 0 || player->seq >= game->cur_player_nr)
+        return -2;
+
+    game->next_player = player;
+    game->next_player_seq = player->seq;
     return 0;
 }
 
@@ -233,7 +258,7 @@ static int game_cmd_preset_user(struct game *game, int argc, const char *argv[])
 
     for (i = 0; i < n_id; i++) {
         char char_id = argv[2][i];
-        int idx = player_char_id_to_idx(char_id);
+        int idx = player_char_to_idx(char_id);
 
         if (idx < 0 || idx >= PLAYER_MAX) {
             game_err("preset user id %c(%#x) unkown\n", char_id, char_id);
@@ -268,6 +293,203 @@ static int game_cmd_preset_user(struct game *game, int argc, const char *argv[])
     return 0;
 }
 
+static int game_cmd_preset_map(struct game *game, int argc, const char *argv[])
+{
+    struct player *player;
+    int pos, lv;
+    char *endptr;
+
+    if (argc != 5 || !argv[2] || !argv[3] || !argv[4])
+        return -1;
+
+    endptr = NULL;
+    pos = strtol(argv[2], &endptr, 10);
+    if (*endptr) {
+        game_err("not a valid number: %s\n", argv[2]);
+        return -1;
+    }
+
+    player = game_get_player_by_id(game, argv[3]);
+    if (!player) {
+        game_err("fail to find user with id: %s\n", argv[3]);
+        return -1;
+    }
+
+    endptr = NULL;
+    lv = strtol(argv[4], &endptr, 10);
+    if (*endptr) {
+        game_err("not a valid number: %s\n", argv[4]);
+        return -1;
+    }
+
+    if (lv < ESTATE_WASTELAND || lv >= ESTATE_MAX)
+        return -1;
+
+    if (map_set_owner(&game->map, pos, player))
+        return -1;
+
+    game->map.nodes[pos].level = lv;
+    return 0;
+}
+
+static int game_cmd_preset_asset(struct game *game, int argc, const char *argv[])
+{
+    struct player *player;
+    int num;
+    char *endptr;
+
+    if (argc != 4 || !argv[2] || !argv[3])
+        return -1;
+
+    player = game_get_player_by_id(game, argv[2]);
+    if (!player) {
+        game_err("fail to find user with id: %s\n", argv[2]);
+        return -1;
+    }
+
+    endptr = NULL;
+    num = strtol(argv[3], &endptr, 10);
+    if (*endptr) {
+        game_err("not a valid number: %s\n", argv[3]);
+        return -1;
+    }
+
+    if (num < 0)
+        return -1;
+
+    if (!strcmp(argv[1], "fund"))
+        player->asset.n_money = num;
+    else if (!strcmp(argv[1], "credit"))
+        player->asset.n_points = num;
+    else
+        return -1;
+
+    return 0;
+}
+
+static int game_cmd_preset_gift(struct game *game, int argc, const char *argv[])
+{
+    struct player *player;
+    int num;
+    char *endptr;
+
+    if (argc != 5 || !argv[2] || !argv[3] || !argv[4])
+        return -1;
+
+    player = game_get_player_by_id(game, argv[2]);
+    if (!player) {
+        game_err("fail to find user with id: %s\n", argv[2]);
+        return -1;
+    }
+
+    endptr = NULL;
+    num = strtol(argv[4], &endptr, 10);
+    if (*endptr) {
+        game_err("not a valid number: %s\n", argv[4]);
+        return -1;
+    }
+
+    if (num < 0)
+        return -1;
+
+    if (!strcmp(argv[3], "barrier")) {
+        if (player->asset.n_robot + num > PLAYER_MAX_ITEM)
+            return -1;
+        player->asset.n_block = num;
+
+    } else if (!strcmp(argv[3], "robot")) {
+        if (player->asset.n_block + num > PLAYER_MAX_ITEM)
+            return -1;
+        player->asset.n_robot = num;
+
+    } else if (!strcmp(argv[3], "god"))  {
+        player->buff.n_god_buff = num;
+    } else {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int game_cmd_preset_userloc(struct game *game, int argc, const char *argv[])
+{
+    struct player *player;
+    int pos, empty_round;
+    char *endptr;
+
+    if (argc != 5 || !argv[2] || !argv[3] || !argv[4])
+        return -1;
+
+    player = game_get_player_by_id(game, argv[2]);
+    if (!player) {
+        game_err("fail to find user with id: %s\n", argv[2]);
+        return -1;
+    }
+
+    endptr = NULL;
+    pos = strtol(argv[3], &endptr, 10);
+    if (*endptr) {
+        game_err("not a valid number: %s\n", argv[3]);
+        return -1;
+    }
+
+    endptr = NULL;
+    empty_round = strtol(argv[4], &endptr, 10);
+    if (*endptr) {
+        game_err("not a valid number: %s\n", argv[4]);
+        return -1;
+    }
+
+    if (pos < 0 || pos >= game->map.n_used || empty_round < 0)
+        return -1;
+
+    map_move_player(&game->map, player, pos);
+    player->buff.n_empty_rounds = empty_round;
+    return 0;
+}
+
+static int game_cmd_preset_nextuser(struct game *game, int argc, const char *argv[])
+{
+    int idx;
+    int char_id;
+    struct player *player;
+
+    if (argc != 2)
+        return -1;
+
+    char_id = argv[1][0];
+    if (!isprint(char_id))
+        return -1;
+
+    player = game_get_player_by_id(game, argv[1]);
+    if (!player) {
+        game_err("fail to find user with id: %s\n", argv[1]);
+        return -1;
+    }
+
+    return game_set_next_player(game, player);
+}
+
+static int game_cmd_preset_barrier(struct game *game, int argc, const char *argv[])
+{
+    struct map *map = &game->map;
+    int pos;
+    char *endptr;
+
+    if (argc != 3 || !argv[2])
+        return -1;
+
+    endptr = NULL;
+    pos = strtol(argv[2], &endptr, 10);
+    if (*endptr) {
+        game_err("not a valid number: %s\n", argv[2]);
+        return -1;
+    }
+
+    return map_place_item(&game->map, pos, ITEM_BLOCK);
+}
+
+
 static int game_cmd_preset(struct game *game, int argc, const char *argv[])
 {
     int i;
@@ -282,13 +504,22 @@ static int game_cmd_preset(struct game *game, int argc, const char *argv[])
         return game_cmd_preset_user(game, argc, argv);
 
     } else if (!strcmp(subcmd, "map")) {
+        return game_cmd_preset_map(game, argc, argv);
 
-    } else if (!strcmp(subcmd, "fund")) {
-    } else if (!strcmp(subcmd, "credit")) {
+    } else if (!strcmp(subcmd, "fund") || !strcmp(subcmd, "credit")) {
+        return game_cmd_preset_asset(game, argc, argv);
+
     } else if (!strcmp(subcmd, "gift")) {
+        return game_cmd_preset_gift(game, argc, argv);
+
     } else if (!strcmp(subcmd, "userloc")) {
+        return game_cmd_preset_userloc(game, argc, argv);
+
     } else if (!strcmp(subcmd, "nextuser")) {
+        return game_cmd_preset_nextuser(game, argc, argv);
+
     } else if (!strcmp(subcmd, "barrier")) {
+        return game_cmd_preset_barrier(game, argc, argv);
     }
     return -1;
 }
