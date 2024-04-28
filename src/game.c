@@ -59,10 +59,9 @@ int game_rotate_player(struct game *game)
     int next, dead;
     struct player *player;
 
-    if (game->state != GAME_STATE_RUNNING) {
-        game_err("game state %d does not allow rotate player\n", game->state);
-        return -1;
-    }
+    if (game->state != GAME_STATE_RUNNING)
+        return 0;
+
     next = game->next_player_seq;
     dead = 0;
 
@@ -164,14 +163,41 @@ int game_init(struct game *game)
     return game_init_map(game);
 }
 
+int game_before_action(struct game *game)
+{
+    if (game->state != GAME_STATE_RUNNING)
+        return 0;
+
+    player_buff_countdown(game->next_player);
+    return 0;
+}
+
+int game_after_action(struct game *game)
+{
+    if (game->state != GAME_STATE_RUNNING)
+        return 0;
+
+    return 0;
+}
+
 int game_event_loop(struct game *game)
 {
     int stop_reason = 0;
     const char *line = NULL;
 
+    /* TODO: make sure on first enter, next_player is valid */
     while (game->state != GAME_STATE_STOPPED) {
-        map_render(&game->map);
+        ui_map_render(&game->map);
 
+        /* TODO: check winning here */
+
+        if (game_before_action(game)) {
+            goto skip_action;
+        }
+
+        ui_game_prompt(game);
+
+        /* wait user input event */
         line = grab_line(stdin, game->input_buf, INPUT_BUF_SIZE);
         if (line)
             game_dbg("read line: %s", line);
@@ -179,9 +205,15 @@ int game_event_loop(struct game *game)
         if (!line) {
             game_dbg("end of file, exit\n");
             game->state = GAME_STATE_STOPPED;
+#ifdef GAME_DEBUG
+            game->need_dump = 1;
+#endif
             stop_reason = 1;
             break;
         }
+
+skip_action:
+        game_after_action(game);
 
         if (game_rotate_player(game)) {
             game_dbg("rotate player fail\n");

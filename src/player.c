@@ -36,7 +36,7 @@ int player_id_to_char(struct player *player)
         return id[0];
 
     game_err("player id %d too big, render not implemented\n", player->idx);
-    return player->name[0];
+    return '?';
 }
 
 static int player_add_name(struct player *player)
@@ -113,4 +113,17 @@ int player_uninit (struct player *player)
 {
     player->valid = 0;
     return player_del_name(player);
+}
+
+
+int player_buff_countdown(struct player *player)
+{
+    struct buff *buff = &player->buff;
+
+    if (buff->n_god_buff > 0)
+        buff->n_god_buff--;
+
+    if (buff->n_empty_rounds > 0)
+        buff->n_empty_rounds--;
+    return 0;
 }

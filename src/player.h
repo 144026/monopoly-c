@@ -66,3 +66,5 @@ int player_id_to_char(struct player *player);
 
 #define for_each_player_end() }}
 
+int player_buff_countdown(struct player *player);
+

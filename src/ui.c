@@ -3,9 +3,42 @@
 #include "player.h"
 #include "ui.h"
 
-int prompt(void)
+
+static const char *player_ui_color[] = {
+    [PLAYER_COLOR_INVALID] = "\e[0m",
+    [PLAYER_COLOR_RED] = "\e[31m",
+    [PLAYER_COLOR_GREEN] = "\e[32m",
+    [PLAYER_COLOR_BLUE] = "\e[34m",
+    [PLAYER_COLOR_YELLOW] = "\e[33m",
+    [PLAYER_COLOR_WHITE] = "\e[37m",
+};
+
+
+static void prompt_player_name(struct player *player)
 {
-    fprintf(stdout, "input> ");
+    if (!player || !player->valid || !player->attached) {
+        fprintf(stdout, "NULL");
+        return;
+    }
+
+    fprintf(stdout, "%s", player_ui_color[player->color]);
+
+    if (!player->name)
+        fprintf(stdout, "%c", player_id_to_char(player));
+    else
+        fprintf(stdout, "%s", player->name);
+
+    fprintf(stdout, "%s", player_ui_color[PLAYER_COLOR_INVALID]);
+}
+
+int ui_game_prompt(struct game *game)
+{
+    if (game->state == GAME_STATE_RUNNING)
+        prompt_player_name(game->next_player);
+    else
+        fprintf(stdout, "enter 'start' to play");
+
+    fprintf(stdout, "> ");
     return 0;
 }
 
@@ -30,8 +63,6 @@ const char *grab_line(FILE *where, char *buf, unsigned int size)
     }
     /* guard */
     buf[size - 2] = 0;
-
-    prompt();
 
     ret = fgets(buf, size, where);
     if (!ret) {
@@ -99,7 +130,7 @@ static void map_node_render(struct map *map, unsigned line, unsigned col)
     putchar(player_id_to_char(player));
 }
 
-void map_render(struct map *map)
+void ui_map_render(struct map *map)
 {
     int line, col;
 

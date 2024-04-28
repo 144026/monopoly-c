@@ -3,17 +3,17 @@ SRCS := $(foreach mod,$(SUBMOD),$(wildcard $(mod)/*.c))
 HEADERS := $(foreach mod,$(SUBMOD),$(wildcard $(mod)/*.h))
 
 CFLAGS := $(foreach mod,$(SUBMOD),-I$(mod))
-CFLAGS += -g
 OBJS := $(foreach src,$(SRCS),$(patsubst %.c,%.o,$(src)))
 
 PROGS := monopoly
 
-ifeq ($(origin V),command line)
-Q =
-quiet =
-else
 Q = @
 quiet = quiet
+ifeq ($(origin V),command line)
+ifneq ($(V),)
+Q =
+quiet =
+endif
 endif
 
 cmd_run_cc = $(Q)$(CC) -c $(CPPFLAGS) $(CFLAGS) -o $@ $<
@@ -31,7 +31,13 @@ $(call cmd_run_$(1),$(2))
 $(call cmd_$(1)_$(quiet),$(2))
 endef
 
+_default: debug
+
 all: $(PROGS)
+
+debug: CPPFLAGS += -DGAME_DEBUG
+debug: CFLAGS += -g
+debug: $(PROGS)
 
 monopoly: $(OBJS)
 	$(call cmd,ld)
@@ -43,4 +49,4 @@ clean:
 	$(call cmd,rm,$(OBJS))
 	$(call cmd,rm,$(PROGS))
 
-.PHONY: all clean
+.PHONY: _default all debug clean
