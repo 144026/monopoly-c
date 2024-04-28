@@ -1,4 +1,5 @@
 #include "common.h"
+#include "game.h"
 #include "player.h"
 #include "ui.h"
 
@@ -95,7 +96,7 @@ static void map_node_render(struct map *map, unsigned line, unsigned col)
     }
 
     player = list_first_entry(&node->players, struct player, pos_list);
-    putchar(player_render_id(player));
+    putchar(player_id_to_char(player));
 }
 
 void map_render(struct map *map)
@@ -135,7 +136,7 @@ void dump_exit_player_item(int id_char, struct asset *asset)
 void dump_exit_player(struct player *player)
 {
     struct map_node *node;
-    int id_char = player_render_id(player);
+    int id_char = player_id_to_char(player);
 
     dump_exit_player_asset(id_char, &player->asset);
     fprintf(stderr, "userloc %c %d %d\n", id_char, player->pos, player->buff.n_empty_rounds);
@@ -145,28 +146,28 @@ void dump_exit_player(struct player *player)
         fprintf(stderr, "gift %c god %d\n", id_char, player->buff.n_god_buff + player->buff.b_god_buff);
 }
 
-void dump_exit(void)
+void dump_exit(struct game *game)
 {
     int i;
     struct map_node *node;
     struct player *player;
 
     fprintf(stderr, "user ");
-    for_each_player_begin(player) {
-        fprintf(stderr, "%c", player_render_id(player));
+    for_each_player_begin(game, player) {
+        fprintf(stderr, "%c", player_id_to_char(player));
     } for_each_player_end()
     fprintf(stderr, "\n");
 
-    for_each_player_begin(player) {
+    for_each_player_begin(game, player) {
         dump_exit_player(player);
     } for_each_player_end()
 
-    for (i = 0; i < g_map.n_used; i++) {
-        node = &g_map.nodes[i];
+    for (i = 0; i < game->map.n_used; i++) {
+        node = &game->map.nodes[i];
         if (node->item == ITEM_BLOCK)
             fprintf(stderr, "barrier %d\n", node->idx);
     }
 
-    fprintf(stderr, "nextuser %c", player_render_id(g_next_player));
+    fprintf(stderr, "nextuser %c", player_id_to_char(game->next_player));
     exit(EXIT_SUCCESS);
 }

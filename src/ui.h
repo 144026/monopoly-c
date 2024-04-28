@@ -8,4 +8,4 @@ const char *grab_line(FILE *where, char *buf, unsigned int size);
 
 void map_render(struct map *map);
 
-void dump_exit(void);
+void dump_exit(struct game *game);

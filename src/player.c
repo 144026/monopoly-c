@@ -2,12 +2,6 @@
 #include "player.h"
 #include "map.h"
 
-int g_player_nr;
-struct player *g_cur_players[PLAYER_MAX];
-struct player *g_next_player;
-
-static struct player g_players[PLAYER_MAX];
-
 static const char *const g_player_ids[PLAYER_MAX] = {
     "Q",
     "A",
@@ -29,10 +23,8 @@ static const char *const g_player_names[PLAYER_MAX] = {
     "金贝贝",
 };
 
-int g_default_money = DEFAULT_MONEY;
 
-
-int player_render_id(struct player *player)
+int player_id_to_char(struct player *player)
 {
     const char *id;
 
@@ -86,10 +78,10 @@ int player_del_name(struct player *player)
     return 0;
 }
 
-static int player_asset_init(struct asset *asset)
+static int player_asset_init(struct asset *asset, int n_money)
 {
     memset(asset, 0, sizeof(*asset));
-    asset->n_money = g_default_money;
+    asset->n_money = n_money;
     INIT_LIST_HEAD(&asset->estates);
     return 0;
 }
@@ -100,7 +92,7 @@ static int player_buff_init(struct buff *buff)
     return 0;
 }
 
-static int player_init (struct player *player, int idx)
+int player_init(struct player *player, int idx, int n_money)
 {
     player->idx = idx;
     player_add_name(player);
@@ -110,99 +102,15 @@ static int player_init (struct player *player, int idx)
     player->attached = 0;
     INIT_LIST_HEAD(&player->pos_list);
 
-    player_asset_init(&player->asset);
+    player_asset_init(&player->asset, n_money);
     player_buff_init(&player->buff);
 
     player->valid = 1;
     return 0;
 }
 
-
-int add_player(int idx)
+int player_uninit (struct player *player)
 {
-    struct player *player;
-
-    if (idx < 0 || idx >= PLAYER_MAX)
-        return -1;
-
-    player = &g_players[idx];
-
-    if (player->valid)
-        return -2;
-
-    player_init(player, idx);
-
-    g_cur_players[g_player_nr++] = player;
-    return 0;
-}
-
-struct player *get_player(int idx)
-{
-    struct player *player;
-
-    if (idx < 0 || idx >= PLAYER_MAX)
-        return NULL;
-
-    player = &g_players[idx];
-    if (!player->valid)
-        return NULL;
-
-    return player;
-}
-
-int del_player(int idx)
-{
-    struct player *player;
-
-    if (idx < 0 || idx >= PLAYER_MAX)
-        return -1;
-
-    player = &g_players[idx];
-
-    if (!player->valid)
-        return -2;
-    if (player->attached)
-        return -3;
-
-    player_del_name(player);
     player->valid = 0;
-
-    g_player_nr--;
-    g_cur_players[g_player_nr] = NULL;
-    return 0;
+    return player_del_name(player);
 }
-
-int del_all_players(struct map *map)
-{
-    int n = g_player_nr;
-
-    while (n-- > 0) {
-        map_detach_player(map, g_cur_players[n]);
-        if (del_player(n))
-            game_err("fail to free player %d\n", n);
-    }
-
-    return 0;
-}
-
-struct player *find_player_by_id(const char *id)
-{
-    int i;
-    struct player *player;
-
-    if (!id)
-        return NULL;
-
-    for (i = 0; i <= g_player_nr; i++) {
-        player = g_cur_players[i];
-        if (!player || !player->valid) {
-            game_err("current player %d invalid\n", i);
-            continue;
-        }
-        if (0 == strncmp(player->name, id, PLAYER_NAME_SZ))
-            return player;
-    }
-
-    return NULL;
-}
-

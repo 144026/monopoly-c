@@ -2,9 +2,7 @@
 #include "player.h"
 #include "map.h"
 
-struct map g_map;
-
-static const struct map_layout g_default_map_layout = {
+const struct map_layout g_default_map_layout = {
     .map_size = 70,
     .map_width = 29,
 
@@ -34,8 +32,6 @@ static const struct map_layout g_default_map_layout = {
     .points_mine = {60, 80, 40, 100, 80, 30},
 };
 
-static const struct map_layout *g_cur_layout = &g_default_map_layout;
-
 static int map_alloc(struct map *map, int n_node)
 {
     if (n_node <= 0 || n_node > MAP_MAX_NODE)
@@ -51,8 +47,9 @@ static int map_alloc(struct map *map, int n_node)
     return 0;
 }
 
-static void map_free(struct map *map)
+void map_free(struct map *map)
 {
+    map->n_used = 0;
     map->n_node = 0;
 
     if (map->nodes) {
@@ -169,7 +166,7 @@ static int map_fill_layout(struct map *map, const struct map_layout *layout)
     return 0;
 }
 
-static int map_init(struct map *map, const struct map_layout *layout)
+int map_init(struct map *map, const struct map_layout *layout)
 {
     int ret;
 
@@ -193,15 +190,9 @@ out:
     return ret;
 }
 
-int init_map(struct map *map)
+int map_init_default(struct map *map)
 {
-    return map_init(map, g_cur_layout);
-}
-
-void uninit_map(struct map *map)
-{
-    map->n_used = 0;
-    map_free(map);
+    return map_init(map, &g_default_map_layout);
 }
 
 int map_attach_player(struct map *map, struct player *player)

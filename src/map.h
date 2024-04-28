@@ -115,10 +115,10 @@ struct map_layout {
     struct map_area areas[MAP_MAX_AREA];
 };
 
-extern struct map g_map;
+extern const struct map_layout g_default_map_layout;
 
-int init_map(struct map *map);
-void uninit_map(struct map *map);
+int map_init(struct map *map, const struct map_layout *layout);
+void map_free(struct map *map);
 
 int map_attach_player(struct map *map, struct player *player);
 int map_detach_player(struct map *map, struct player *player);

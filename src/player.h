@@ -50,31 +50,19 @@ struct player {
 #define PLAYER_MAX 16
 #define DEFAULT_MONEY 10000
 
-
-/* raw player creation/deletion, unattached */
-int add_player(int idx);
-int del_player(int idx);
-
-/* delete every player, player should be attached on map */
-int del_all_players(struct map *map);
-
-struct player *get_player(int idx);
-
-extern int g_player_nr;
-extern struct player *g_cur_players[PLAYER_MAX];
-extern struct player *g_next_player;
+int player_init(struct player *player, int idx, int n_money);
+int player_uninit(struct player *player);
+int player_id_to_char(struct player *player);
 
 #define for_each_arr_entry(ent, arr, size) \
     for ((ent) = (arr); (ent) - (arr) < size; (ent)++)
 
-#define for_each_player(pplayer) for_each_arr_entry(pplayer, g_cur_players, g_player_nr)
+#define for_each_player(game, pplayer) for_each_arr_entry(pplayer, (game)->cur_players, (game)->cur_player_nr)
 
-#define for_each_player_begin(player) { \
-    struct player *const *_pplayer; \
-    for_each_player(_pplayer) { \
-        player = *_pplayer; \
+#define for_each_player_begin(game, player) { \
+    struct player *const *__pplayer; \
+    for_each_player(game, __pplayer) { \
+        player = *__pplayer; \
 
 #define for_each_player_end() }}
 
-
-int player_render_id(struct player *player);
