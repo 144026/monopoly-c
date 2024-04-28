@@ -180,10 +180,33 @@ int game_after_action(struct game *game)
     return 0;
 }
 
+#define GAME_CMD_MAX_ARGC 16
+static int game_handle_command(struct game *game, char *line)
+{
+    int argc;
+    const char *cmd;
+    const char *argv[GAME_CMD_MAX_ARGC];
+
+    argc = ui_cmd_tokenize(line, argv, GAME_CMD_MAX_ARGC);
+    if (argc <= 0)
+        return 0;
+
+    /* dispatch cmd */
+    cmd = argv[0];
+    if (!strcmp(cmd, "quit")) {
+        game_stop(game, GAME_STOP_NODUMP);
+        return 0;
+    } else if (!strcmp(cmd, "dump")) {
+        game_stop(game, GAME_STOP_DUMP);
+        return 0;
+    }
+    return 0;
+}
+
 int game_event_loop(struct game *game)
 {
     int stop_reason = 0;
-    const char *line = NULL;
+    char *line = NULL;
 
     /* TODO: make sure on first enter, next_player is valid */
     while (game->state != GAME_STATE_STOPPED) {
@@ -198,26 +221,25 @@ int game_event_loop(struct game *game)
         ui_game_prompt(game);
 
         /* wait user input event */
-        line = grab_line(stdin, game->input_buf, INPUT_BUF_SIZE);
+        line = ui_read_line(stdin, game->input_buf, INPUT_BUF_SIZE);
         if (line)
             game_dbg("read line: %s", line);
 
         if (!line) {
             game_dbg("end of file, exit\n");
-            game->state = GAME_STATE_STOPPED;
-#ifdef GAME_DEBUG
-            game->need_dump = 1;
-#endif
+            game_stop(game, GAME_STOP_NODUMP);
             stop_reason = 1;
             break;
         }
+
+        game_handle_command(game, line);
 
 skip_action:
         game_after_action(game);
 
         if (game_rotate_player(game)) {
             game_dbg("rotate player fail\n");
-            game->state = GAME_STATE_STOPPED;
+            game_stop(game, GAME_STOP_NODUMP);
             stop_reason = 2;
             break;
         }
@@ -229,7 +251,11 @@ skip_action:
 void game_stop(struct game *game, int need_dump)
 {
     game->state = GAME_STATE_STOPPED;
+#ifdef GAME_DEBUG
+    game->need_dump = 1;
+#else
     game->need_dump = need_dump;
+#endif
 }
 
 void game_exit(struct game *game)

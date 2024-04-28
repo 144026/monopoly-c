@@ -42,7 +42,7 @@ int ui_game_prompt(struct game *game)
     return 0;
 }
 
-void discard_line(FILE *where)
+static void discard_line(FILE *where)
 {
     int c;
 
@@ -53,9 +53,9 @@ void discard_line(FILE *where)
 }
 
 /* @return NULL if eof, empty string if nothing is read */
-const char *grab_line(FILE *where, char *buf, unsigned int size)
+char *ui_read_line(FILE *where, char *buf, unsigned int size)
 {
-    const char *ret;
+    char *ret;
 
     if (size < 2) {
         game_err("input buffer too small, can't read\n");
@@ -79,6 +79,39 @@ const char *grab_line(FILE *where, char *buf, unsigned int size)
         discard_line(where);
     }
     return ret;
+}
+
+static inline int ui_cmd_eol(int c)
+{
+    return !c || c == '\n' || c == '#';
+}
+
+int ui_cmd_tokenize(char *cmd, const char *argv[], int n)
+{
+    int argc = 0;
+
+    while (argc < n) {
+        /* strip front */
+        while (isspace(*cmd))
+            cmd++;
+        /* end of line */
+        if (ui_cmd_eol(*cmd))
+            break;
+
+        /* eat through */
+        argv[argc++] = cmd;
+        while (*cmd && !isspace(*cmd) && *cmd != '#')
+            cmd++;
+        /* '\0', space, or '#' */
+        if (isspace(*cmd)) {
+            *cmd++ = '\0';
+        } else if (*cmd == '#') {
+            *cmd++ = '\0';
+            break;
+        }
+    }
+
+    return argc;
 }
 
 
@@ -199,6 +232,6 @@ void dump_exit(struct game *game)
             fprintf(stderr, "barrier %d\n", node->idx);
     }
 
-    fprintf(stderr, "nextuser %c", player_id_to_char(game->next_player));
+    fprintf(stderr, "nextuser %c\n", player_id_to_char(game->next_player));
     exit(EXIT_SUCCESS);
 }

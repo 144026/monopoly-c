@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #ifdef GAME_DEBUG
 #define game_log(fmt, args...) fprintf(stderr, "[LOG] " fmt, ## args)
