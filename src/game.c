@@ -825,6 +825,7 @@ static int game_player_step(struct game *game, struct player *player, int step)
 step_into:
         node = &map->nodes[pos];
         if (node->item == ITEM_BLOCK) {
+            node->item = ITEM_INVALID;
             fprintf(ui->out, "[STEP] Walked %d step(s) forward.\n", n);
             fprintf(ui->out, "[BLOCK] Oh! Stop here.\n");
             if (map_move_player(map, player, pos))
@@ -834,6 +835,7 @@ step_into:
         if (node->item == ITEM_BOMB) {
             int hospital_pos;
 
+            node->item = ITEM_INVALID;
             fprintf(ui->out, "[STEP] Walked %d step(s) forward.\n", n);
             fprintf(ui->out, "[BOMB] Explosion! Transferred to nearest hospital, rest 3 rounds\n");
 
