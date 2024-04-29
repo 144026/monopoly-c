@@ -1,0 +1,6 @@
+preset user AQ
+preset map 12 A 1
+preset userloc A 10 0
+preset fund A 100
+step 2
+dump

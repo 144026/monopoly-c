@@ -1,0 +1,5 @@
+preset user AQ
+preset userloc A 10 0
+preset fund A 100
+step 1
+dump

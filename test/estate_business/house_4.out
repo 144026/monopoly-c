@@ -1,0 +1,9 @@
+user AQ
+map 11 A 0
+userloc A 11 0
+userloc Q 0 0
+fund A 50
+fund Q 10000
+credit A 0
+credit Q 0
+nextuser Q
