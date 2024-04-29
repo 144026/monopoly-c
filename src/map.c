@@ -2,7 +2,7 @@
 #include "player.h"
 #include "map.h"
 
-const struct map_layout g_default_map_layout = {
+const struct map_layout g_default_map_layout_v1 = {
     .map_size = 70,
     .map_width = 29,
 
@@ -31,6 +31,40 @@ const struct map_layout g_default_map_layout = {
     .pos_mine = {64, 65, 66, 67, 68, 69},
     .points_mine = {60, 80, 40, 100, 80, 30},
 };
+
+const struct map_layout g_default_map_layout_v2 = {
+    .map_size = 70,
+    .map_width = 29,
+
+    .n_start = 1,
+    .n_hospital = 1,
+    .n_item_house = 1,
+    .n_gift_house = 1,
+    .n_prison = 0,
+    .n_park = 1,
+    .n_magic_house = 1,
+
+    .pos_start = {START_POS},
+    .pos_hospital = {HOSPITAL_POS},
+    .pos_item_house = {ITEM_HOUSE_POS},
+    .pos_gift_house = {GIFT_HOUSE_POS},
+    .pos_prison = {},
+    .pos_park = {PRISON_POS},
+    .pos_magic_house = {MAGIC_HOUSE_POS},
+
+    .n_area = 3,
+    .areas = {
+        {START_POS, ITEM_HOUSE_POS, AREA_1_PRICE},
+        {ITEM_HOUSE_POS, GIFT_HOUSE_POS, AREA_2_PRICE},
+        {GIFT_HOUSE_POS, MAGIC_HOUSE_POS + 1, AREA_3_PRICE},
+    },
+
+    .n_mine = 6,
+    .pos_mine = {64, 65, 66, 67, 68, 69},
+    .points_mine = {60, 80, 40, 100, 80, 30},
+};
+
+const struct map_layout *g_default_map_layout = &g_default_map_layout_v2;
 
 static int map_alloc(struct map *map, int n_node)
 {
@@ -132,6 +166,10 @@ static int map_fill_layout(struct map *map, const struct map_layout *layout)
         pos = layout->pos_prison[i];
         map_node_init(&map->nodes[pos], pos, MAP_NODE_PRISON, 0);
     }
+    for (i = 0; i < MAP_MAX_SPECIAL && i < layout->n_park; i++) {
+        pos = layout->pos_park[i];
+        map_node_init(&map->nodes[pos], pos, MAP_NODE_PARK, 0);
+    }
     for (i = 0; i < MAP_MAX_SPECIAL && i < layout->n_magic_house; i++) {
         pos = layout->pos_magic_house[i];
         map_node_init(&map->nodes[pos], pos, MAP_NODE_MAGIC_HOUSE, 0);
@@ -195,7 +233,7 @@ out:
 
 int map_init_default(struct map *map)
 {
-    return map_init(map, &g_default_map_layout);
+    return map_init(map, g_default_map_layout);
 }
 
 int map_attach_player(struct map *map, struct player *player)

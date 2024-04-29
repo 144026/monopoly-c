@@ -106,6 +106,9 @@ struct map_layout {
     int n_prison;
     int pos_prison[MAP_MAX_SPECIAL];
 
+    int n_park;
+    int pos_park[MAP_MAX_SPECIAL];
+
     int n_magic_house;
     int pos_magic_house[MAP_MAX_SPECIAL];
 
@@ -117,7 +120,7 @@ struct map_layout {
     struct map_area areas[MAP_MAX_AREA];
 };
 
-extern const struct map_layout g_default_map_layout;
+extern const struct map_layout *g_default_map_layout;
 
 int map_init(struct map *map, const struct map_layout *layout);
 void map_free(struct map *map);

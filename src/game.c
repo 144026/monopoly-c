@@ -5,8 +5,8 @@
 
 static int game_init_map(struct game *game)
 {
-    game->cur_layout = &g_default_map_layout;
-    return map_init(&game->map, &g_default_map_layout);
+    game->cur_layout = g_default_map_layout;
+    return map_init(&game->map, g_default_map_layout);
 }
 
 static void game_uninit_map(struct game *game)
@@ -805,7 +805,7 @@ static int game_player_step(struct game *game, struct player *player, int step)
     }
 
     if (step == 0) {
-        game_dbg("step 0 hack\n", step);
+        game_dbg("step 0 hack\n");
         pos = player->pos;
         goto step_into;
     }
