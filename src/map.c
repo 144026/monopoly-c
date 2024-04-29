@@ -72,10 +72,12 @@ static void map_node_init(struct map_node *node, int idx, enum node_type type, i
     INIT_LIST_HEAD(&node->players);
     node->item = ITEM_INVALID;
     node->item_owner = NULL;
-    if (type == MAP_NODE_VACANCY)
+    if (type == MAP_NODE_VACANCY) {
         node->price = v;
-    else if (type == MAP_NODE_MINE)
+        node->level = ESTATE_WASTELAND;
+    } else if (type == MAP_NODE_MINE) {
         node->points = v;
+    }
 }
 
 static int map_fill_layout(struct map *map, const struct map_layout *layout)
@@ -340,5 +342,13 @@ int map_nearest_node_from(const struct map *map, const struct map_layout *layout
     }
 
     return -1;
+}
+
+int map_node_price(struct map_node *node)
+{
+    if (node->type != MAP_NODE_VACANCY)
+        return 0;
+
+    return node->price * (1 + node->level);
 }
 

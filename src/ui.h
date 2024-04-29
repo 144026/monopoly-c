@@ -37,6 +37,7 @@ int ui_cmd_tokenize(char *cmd, const char *argv[], int n);
 
 const char *ui_fmt(struct ui *ui, const char *fmt, ...) __printf(2, 3) ;
 
+int ui_input_bool_prompt(struct ui *ui, const char *prompt, int *res);
 int ui_input_int_prompt(struct ui *ui, const char *prompt, const struct range *range, int *res);
 
 struct choice {

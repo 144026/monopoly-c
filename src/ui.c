@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <unistd.h>
 #include "common.h"
 #include "game.h"
 #include "player.h"
@@ -139,7 +140,7 @@ char *ui_read_line(struct ui *ui)
     }
 
     /* guard */
-    buf[size - 2] = 0;
+    buf[size - 2] = buf[size - 1] = 0;
 
     ret = fgets(buf, size, ui->in);
     if (!ret) {
@@ -156,6 +157,12 @@ char *ui_read_line(struct ui *ui)
         game_err("line length exceeds maximum %d characters\n", size - 2);
         buf[size - 2] = '\n';
         discard_line(ui->in);
+    }
+
+    if (!isatty(fileno(ui->in)) && isatty(fileno(ui->out))) {
+        /* auto play */
+        /* sleep(1); */
+        fprintf(ui->out, "%s", buf);
     }
 
     game_dbg("read line: %s", ret);
@@ -196,6 +203,49 @@ int ui_cmd_tokenize(char *cmd, const char *argv[], int n)
 }
 
 /* @return: < 0 fatal err, == 0 try again, > 0 done */
+int ui_input_bool_prompt(struct ui *ui, const char *prompt, int *res)
+{
+    char *line = NULL;
+    const char *toks[4], *ans;
+    int val;
+    int n_tok;
+
+    if (prompt)
+        fprintf(ui->out, "%s (y/n) ", prompt);
+
+    line = ui_read_line(ui);
+    if (!line)
+        return -1;
+
+    n_tok = ui_cmd_tokenize(line, toks, ARRAY_SIZE(toks));
+    if (n_tok == 0) {
+        return 0;
+    } else if (n_tok != 1) {
+        fprintf(ui->out, "input error, only y or n allowed, got %d tokens\n", n_tok);
+        return 0;
+    }
+
+    ans = toks[0];
+    while (isspace(*ans))
+        ans++;
+
+    val = *ans;
+    if (isalpha(val))
+        val = tolower(val);
+
+    if (val == 'y' || val == 'Y') {
+        *res = 1;
+    } else if (val == 'n' || val == 'N') {
+        *res = 0;
+    } else {
+        fprintf(ui->out, "input error, only y or n allowed, got %s\n", toks[0]);
+        return 0;
+    }
+
+    return 1;
+}
+
+/* @return: < 0 fatal err, == 0 try again, > 0 done */
 int ui_input_int_prompt(struct ui *ui, const char *prompt, const struct range *range, int *res)
 {
     char *endptr, *line = NULL;
@@ -213,7 +263,7 @@ int ui_input_int_prompt(struct ui *ui, const char *prompt, const struct range *r
     if (n_tok == 0) {
         return 0;
     } else if (n_tok != 1) {
-        fprintf(ui->out, "input error, only one number is allowed, got %d\n", n_tok);
+        fprintf(ui->out, "input error, only one number is allowed, got %d tokens\n", n_tok);
         return 0;
     }
 
@@ -274,7 +324,7 @@ int ui_selection_menu_prompt(struct ui *ui, const char *prompt, struct select *s
     if (n_tok == 0) {
         return 0;
     } else if (n_tok != 1) {
-        fprintf(ui->out, "input error, only one choice is allowed, got %d\n", n_tok);
+        fprintf(ui->out, "input error, only one choice is allowed, got %d tokens\n", n_tok);
         return 0;
     } else if (strlen(toks[0]) != 1) {
         fprintf(ui->out, "input error, only one choice is allowed, got %s\n", toks[0]);

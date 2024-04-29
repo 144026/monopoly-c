@@ -131,3 +131,5 @@ int map_place_item(struct map *map, int pos, enum item_type item, struct player 
 int map_set_owner(struct map *map, int pos, struct player *owner);
 
 int map_nearest_node_from(const struct map *map, const struct map_layout *layout, int pos, enum node_type type);
+
+int map_node_price(struct map_node *node);
