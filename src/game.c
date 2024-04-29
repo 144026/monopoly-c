@@ -23,7 +23,7 @@ int game_add_player(struct game *game, int idx)
     if (idx < 0 || idx >= PLAYER_MAX)
         return -1;
 
-    if (game->state == GAME_STATE_RUNNING) {
+    if (game->state == GAME_STATE_RUNNING || game->state == GAME_STATE_UNINIT) {
         game_err("game state %d does not allow add player\n", game->state);
         return -1;
     }
@@ -38,6 +38,37 @@ int game_add_player(struct game *game, int idx)
 
     game->cur_players[game->cur_player_nr] = player;
     game->cur_player_nr++;
+    return 0;
+}
+
+int game_add_players(struct game *game, int idxs[], int n_idx)
+{
+    int i, idx;
+    int last_player_nr = game->cur_player_nr;
+
+    if (game->state == GAME_STATE_RUNNING || game->state == GAME_STATE_UNINIT) {
+        game_err("game state %d does not allow add player\n", game->state);
+        return -1;
+    }
+
+    for (i = 0; i < n_idx; i++) {
+        if (idxs[i] < 0 || idxs[i] >= PLAYER_MAX)
+            return -2;
+
+        if (game_add_player(game, idxs[i])) {
+            game_err("add player idxs[%d] = %d fail\n", i, idxs[i]);
+            return -3;
+        }
+        if (map_attach_player(&game->map, &game->players[idxs[i]])) {
+            game_err("preset attach player idxs[%d] = %d to map fail\n", i, idxs[i]);
+            return -4;
+        }
+    }
+
+    if (last_player_nr == 0 && game->cur_player_nr > 0) {
+        game->next_player_seq = 0;
+        game->next_player = game->cur_players[0];
+    }
     return 0;
 }
 
@@ -79,8 +110,10 @@ int game_rotate_player(struct game *game)
 
 again:
     if (dead >= game->cur_player_nr) {
-        game_err("no player found on map\n");
-        return -2;
+        game->next_player_seq = 0;
+        game->next_player = NULL;
+        game_dbg("no player left on map\n");
+        return 0;
     }
 
     next += 1;
@@ -123,7 +156,7 @@ int game_del_player(struct game *game, int idx)
         return -1;
     }
 
-    if (game->state == GAME_STATE_RUNNING) {
+    if (game->state == GAME_STATE_RUNNING || game->state == GAME_STATE_UNINIT) {
         game_err("game state %d does not allow del player\n", game->state);
         return -1;
     }
@@ -152,7 +185,7 @@ int game_del_all_players(struct game *game)
     int n = game->cur_player_nr;
     int ret;
 
-    if (game->state == GAME_STATE_RUNNING) {
+    if (game->state == GAME_STATE_RUNNING || game->state == GAME_STATE_UNINIT) {
         game_err("game state %d does not allow del player\n", game->state);
         return -1;
     }
@@ -197,24 +230,53 @@ struct player *game_find_player_by_id(struct game *game, const char *id)
 int game_init(struct game *game)
 {
     memset(game, 0, sizeof(*game));
+    game->default_money = GAME_DEFAULT_MONEY;
+
+    if (ui_init(&game->ui))
+        goto err;
+
+    if (game_init_map(game))
+        goto err_ui;
+
     game->state = GAME_STATE_INIT;
-    game->default_money = DEFAULT_MONEY;
-    return game_init_map(game);
+    return 0;
+
+err_ui:
+    ui_uninit(&game->ui);
+err:
+    game->state = GAME_STATE_UNINIT;
+    return -1;
 }
 
 void game_uninit(struct game *game)
 {
     game_del_all_players(game);
     game_uninit_map(game);
+    ui_uninit(&game->ui);
+    game->state = GAME_STATE_UNINIT;
 }
 
+
+static int game_action_prompt(struct game *game)
+{
+    struct ui *ui = &game->ui;
+
+    if (game->state == GAME_STATE_RUNNING)
+        ui_prompt_player_name(ui, game->next_player);
+    else
+        fprintf(ui->out, "enter 'start' to play");
+
+    fprintf(ui->out, "> ");
+    return 0;
+}
 
 int game_before_action(struct game *game)
 {
     if (game->state != GAME_STATE_RUNNING)
         return 0;
 
-    player_buff_countdown(game->next_player);
+    if (game->next_player)
+        player_buff_countdown(game->next_player);
     return 0;
 }
 
@@ -275,21 +337,12 @@ static int game_cmd_preset_user(struct game *game, int argc, const char *argv[])
         return -2;
     }
 
-    for (i = 0; i < n_id; i++) {
-        if (game_add_player(game, idxs[i])) {
-            game_err("preset add player idxs[%d] = %d fail\n", i, idxs[i]);
-            return -3;
-        }
-        if (map_attach_player(&game->map, game->cur_players[i])) {
-            game_err("preset attach player idxs[%d] = %d to map fail\n", i, idxs[i]);
-            return -4;
-        }
+    if (game_add_players(game, idxs, n_id)) {
+        game_err("preset add players fail\n");
+        return -3;
     }
 
-    game->next_player_seq = 0;
-    game->next_player = game->cur_players[0];
-    game->state = GAME_STATE_RUNNING;
-
+    game->state = GAME_STATE_START;
     return 0;
 }
 
@@ -443,9 +496,8 @@ static int game_cmd_preset_userloc(struct game *game, int argc, const char *argv
     if (pos < 0 || pos >= game->map.n_used || empty_round < 0)
         return -1;
 
-    map_move_player(&game->map, player, pos);
     player->buff.n_empty_rounds = empty_round;
-    return 0;
+    return map_move_player(&game->map, player, pos);
 }
 
 static int game_cmd_preset_nextuser(struct game *game, int argc, const char *argv[])
@@ -486,7 +538,7 @@ static int game_cmd_preset_barrier(struct game *game, int argc, const char *argv
         return -1;
     }
 
-    return map_place_item(&game->map, pos, ITEM_BLOCK);
+    return map_place_item(&game->map, pos, ITEM_BLOCK, NULL);
 }
 
 
@@ -524,6 +576,98 @@ static int game_cmd_preset(struct game *game, int argc, const char *argv[])
     return -1;
 }
 
+static int game_cmd_start(struct game *game)
+{
+    struct ui *ui = &game->ui;
+    const char *prompt;
+    struct range range;
+    int ret, i, seq;
+    int  n_players;
+    int idxs[GAME_PLAYER_MAX];
+    struct choice choices[GAME_PLAYER_MAX] = {};
+    struct select sel;
+
+    range.begin = GAME_DEFAULT_MONEY_MIN;
+    range.end = GAME_DEFAULT_MONEY_MAX;
+    prompt = ui_fmt(ui, "select initial money (%ld-%ld): ", range.begin, range.end);
+    while (1) {
+        ret = ui_input_int_prompt(ui, prompt, &range, &game->default_money);
+        if (ret < 0)
+            goto out_stop;
+        if (ret > 0)
+            break;
+    }
+
+    range.begin = GAME_PLAYER_MIN;
+    range.end = GAME_PLAYER_MAX;
+    prompt = ui_fmt(ui, "select number of players (%ld-%ld): ", range.begin, range.end);
+    while (1) {
+        ret = ui_input_int_prompt(ui, prompt, &range, &n_players);
+        if (ret < 0)
+            goto out_stop;
+        if (ret > 0)
+            break;
+    }
+
+    /* build choices */
+    for (i = 0; i < GAME_PLAYER_MAX; i++) {
+        choices[i].name = player_idx_to_name(i);
+        choices[i].id = player_idx_to_char(i);
+        if (i < 9)
+            choices[i].alt_id = '1' + i;
+    }
+
+    sel.n_selected = 0;
+    sel.n_choice = ARRAY_SIZE(choices);
+    sel.choices = choices;
+    while (1) {
+        prompt = ui_fmt(ui, "select your player (%d/%d):\n", sel.n_selected + 1, n_players);
+        ret = ui_selection_menu_prompt(ui, prompt, &sel);
+        if (ret < 0)
+            goto out_stop;
+        if (ret == 0)
+            continue;
+
+        if (sel.n_selected >= n_players)
+            break;
+    }
+
+    for (i = 0, seq = 0; i < GAME_PLAYER_MAX && seq < n_players; i++) {
+        if (!choices[i].chosen)
+            continue;
+        idxs[seq++] = i;
+    }
+
+    if (game_add_players(game, idxs, n_players)) {
+        game_err("fail to add players\n");
+        goto out_stop;
+    }
+
+    game->state = GAME_STATE_START;
+    return 0;
+
+out_stop:
+    game_stop(game, GAME_STATE_STOPPED);
+    return -1;
+}
+
+static void game_cmd_help(struct game *game)
+{
+    struct ui *ui = &game->ui;
+
+    fprintf(ui->out, "Available commands:\n");
+    fprintf(ui->out, "  start       begin game\n");
+    fprintf(ui->out, "  roll        roll dice and walk\n");
+    fprintf(ui->out, "  sell N      sell estate on N-th map node\n");
+    fprintf(ui->out, "  block N     use barrier item, N is distance from current player\n");
+    fprintf(ui->out, "  bomb N      use bomb item, N is distance from current player\n");
+    fprintf(ui->out, "  robot       use robot item\n");
+    fprintf(ui->out, "  query       show current player stats\n");
+    fprintf(ui->out, "  quit        stop game and exit\n");
+    fprintf(ui->out, "  help        show this help\n");
+    fprintf(ui->out, "\n");
+}
+
 #define GAME_CMD_MAX_ARGC 16
 
 /* @return: < 0 err, == 0 good, > 0 action performed */
@@ -537,10 +681,9 @@ static int game_handle_command(struct game *game, char *line)
     if (argc <= 0)
         return -1;
 
+    cmd = argv[0];
     game_debug_show_cmd(argc, argv);
 
-    /* dispatch cmd */
-    cmd = argv[0];
     if (!strcmp(cmd, "quit")) {
         game_stop(game, GAME_STOP_NODUMP);
         return 0;
@@ -549,10 +692,31 @@ static int game_handle_command(struct game *game, char *line)
         return 0;
     } else if (!strcmp(cmd, "preset")) {
         return game_cmd_preset(game, argc, argv);
+    } else if (!strcmp(cmd, "help")) {
+        game_cmd_help(game);
+        return 0;
+    }
+
+    if (game->state != GAME_STATE_RUNNING) {
+        if (!strcmp(cmd, "start"))
+            return game_cmd_start(game);
+        return -1;
     }
 
     game_err("cmd '%s' unknown\n", cmd);
     return -1;
+}
+
+static char *game_read_line(struct game *game)
+{
+    char *line = NULL;
+
+    line = ui_read_line(&game->ui);
+
+    if (!line) {
+        game_stop(game, GAME_STOP_NODUMP);
+    }
+    return line;
 }
 
 int game_event_loop(struct game *game)
@@ -563,7 +727,9 @@ int game_event_loop(struct game *game)
 
     /* TODO: make sure on first enter, next_player is valid */
     while (game->state != GAME_STATE_STOPPED) {
-        ui_map_render(&game->map);
+
+        assert(game->state != GAME_STATE_UNINIT);
+        ui_map_render(&game->ui, &game->map);
 
         /* TODO: check winning here */
 
@@ -571,16 +737,9 @@ int game_event_loop(struct game *game)
             goto skip_action;
         }
 
-        ui_game_prompt(game);
-
-        /* wait user input event */
-        line = ui_read_line(stdin, game->input_buf, INPUT_BUF_SIZE);
-        if (line)
-            game_dbg("read line: %s", line);
-
+        game_action_prompt(game);
+        line = game_read_line(game);
         if (!line) {
-            game_dbg("end of file, exit\n");
-            game_stop(game, GAME_STOP_NODUMP);
             stop_reason = 1;
             break;
         }
@@ -589,6 +748,9 @@ int game_event_loop(struct game *game)
 
 skip_action:
         game_after_action(game);
+
+        if (game->state == GAME_STATE_START)
+            game->state = GAME_STATE_RUNNING;
 
         if (cmd_ret <= 0)
             continue;
@@ -617,8 +779,76 @@ void game_stop(struct game *game, int need_dump)
 void game_exit(struct game *game)
 {
     if (game->need_dump)
-        dump_exit(game);
+        game_dump(game);
 
     game_uninit(game);
+}
+
+
+static void game_dump_player_asset(struct ui *ui, int id_char, struct asset *asset)
+{
+    struct map_node *estate;
+
+    list_for_each_entry(estate, &asset->estates, estates_list) {
+        fprintf(ui->err, "map %d %c %d\n", estate->idx, id_char, estate->level);
+    }
+    fprintf(ui->err, "fund %c %d\n", id_char, asset->n_money);
+    fprintf(ui->err, "credit %c %d\n", id_char, asset->n_points);
+}
+
+static void game_dump_player_item(struct ui *ui, int id_char, struct asset *asset)
+{
+    if (asset->n_bomb)
+        fprintf(ui->err, "gift %c bomb %d\n", id_char, asset->n_bomb);
+
+    if (asset->n_block)
+        fprintf(ui->err, "gift %c block %d\n", id_char, asset->n_block);
+
+    if (asset->n_robot)
+        fprintf(ui->err, "gift %c robot %d\n", id_char, asset->n_robot);
+}
+
+static void game_dump_player(struct ui *ui, struct player *player)
+{
+    struct map_node *node;
+    int id_char = player_id_to_char(player);
+
+    game_dump_player_asset(ui, id_char, &player->asset);
+    fprintf(ui->err, "userloc %c %d %d\n", id_char, player->pos, player->buff.n_empty_rounds);
+
+    game_dump_player_item(ui, id_char, &player->asset);
+    if (player->buff.n_god_buff + player->buff.b_god_buff)
+        fprintf(ui->err, "gift %c god %d\n", id_char, player->buff.n_god_buff + player->buff.b_god_buff);
+}
+
+void game_dump(struct game *game)
+{
+    int i;
+    struct map_node *node;
+    struct player *player;
+    struct ui *ui = &game->ui;
+
+    if (game->cur_player_nr)
+        fprintf(ui->err, "user ");
+
+    for_each_player_begin(game, player) {
+        fprintf(ui->err, "%c", player_id_to_char(player));
+    } for_each_player_end()
+
+    if (game->cur_player_nr)
+        fprintf(ui->err, "\n");
+
+    for_each_player_begin(game, player) {
+        game_dump_player(ui, player);
+    } for_each_player_end()
+
+    for (i = 0; i < game->map.n_used; i++) {
+        node = &game->map.nodes[i];
+        if (node->item == ITEM_BLOCK)
+            fprintf(ui->err, "barrier %d\n", node->idx);
+    }
+
+    if (game->cur_player_nr)
+        fprintf(ui->err, "nextuser %c\n", player_id_to_char(game->next_player));
 }
 

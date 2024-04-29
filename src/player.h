@@ -1,6 +1,5 @@
 #pragma once
 #include "list.h"
-#include "map.h"
 
 enum player_color {
     PLAYER_COLOR_INVALID = 0,
@@ -52,12 +51,14 @@ struct player {
 };
 
 #define PLAYER_MAX 16
-#define DEFAULT_MONEY 10000
 
 int player_init(struct player *player, int idx, int seq);
 int player_uninit(struct player *player);
 int player_id_to_char(struct player *player);
+char player_idx_to_char(int idx);
 int player_char_to_idx(int c);
+
+const char *player_idx_to_name(int idx);
 
 #define for_each_arr_entry(ent, arr, size) \
     for ((ent) = (arr); (ent) - (arr) < size; (ent)++)

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 
 #ifdef GAME_DEBUG
 #define game_log(fmt, args...) fprintf(stdout, "[LOG][%s:%d] %-24s : " fmt, __FILE__, __LINE__, __FUNCTION__, ## args)
@@ -15,3 +16,11 @@
 #define game_dbg(fmt, args...)
 #endif
 
+struct range {
+    long begin;
+    long end;
+};
+
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(arr) (sizeof (arr) / sizeof (arr)[0])
+#endif

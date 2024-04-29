@@ -33,10 +33,14 @@ endef
 
 _default: debug
 
+all: CFLAGS += -g -O2
 all: $(PROGS)
 
+# https://stackoverflow.com/questions/64126942/malloc-nano-zone-abandoned-due-to-inability-to-preallocate-reserved-vm-space
+# export MallocNanoZone=0
 debug: CPPFLAGS += -DGAME_DEBUG
-debug: CFLAGS += -g
+debug: CFLAGS += -fsanitize=address -fno-omit-frame-pointer -g -O1
+debug: LDFLAGS += -fsanitize=address
 debug: $(PROGS)
 
 monopoly: $(OBJS)

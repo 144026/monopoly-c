@@ -17,10 +17,10 @@ static const enum player_color g_player_colors[PLAYER_MAX] = {
 };
 
 static const char *const g_player_names[PLAYER_MAX] = {
-    "钱夫人",
-    "阿土伯",
-    "孙小美",
-    "金贝贝",
+    "Qianfuren",
+    "Atubo",
+    "Sunxiaomei",
+    "Jinbeibei",
 };
 
 
@@ -58,6 +58,28 @@ int player_char_to_idx(int c) {
     }
 
     return -1;
+}
+
+char player_idx_to_char(int idx)
+{
+    if (idx < 0 || idx >= PLAYER_MAX)
+        return 0;
+
+    if (g_player_ids[idx])
+        return g_player_ids[idx][0];
+
+    return 0;
+}
+
+const char *player_idx_to_name(int idx)
+{
+    if (idx < 0 || idx >= PLAYER_MAX)
+        return NULL;
+
+    if (g_player_names[idx])
+        return g_player_names[idx];
+
+    return NULL;
 }
 
 static int player_add_name(struct player *player)

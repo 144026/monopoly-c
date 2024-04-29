@@ -2,10 +2,54 @@
 #include <stdio.h>
 #include "map.h"
 
-char *ui_read_line(FILE *where, char *buf, unsigned int size);
+#define MAX_INPUT_LEN 512
+#define INPUT_BUF_SIZE (MAX_INPUT_LEN + 2)
 
-void ui_map_render(struct map *map);
-int ui_game_prompt(struct game *game);
+#define FORMAT_BUF_SIZE 512
+#define N_FORMAT_BUF   4
+
+struct ui {
+    FILE *in;
+    FILE *out;
+    FILE *err;
+
+    int in_buf_size;
+    char *in_buf;
+
+    int fmt_buf_size;
+    char *fmt_buf[N_FORMAT_BUF];
+    int fmt_idx;
+};
+
+int ui_init(struct ui *ui);
+int ui_uninit(struct ui *ui);
+
+void ui_map_render(struct ui *ui, struct map *map);
+
+void ui_prompt_player_name(struct ui *ui, struct player *player);
+char *ui_read_line(struct ui *ui);
 int ui_cmd_tokenize(char *cmd, const char *argv[], int n);
 
-void dump_exit(struct game *game);
+
+#ifndef __printf
+#define __printf(x, y) __attribute__(( format(printf, x, y) ))
+#endif
+
+const char *ui_fmt(struct ui *ui, const char *fmt, ...) __printf(2, 3) ;
+
+int ui_input_int_prompt(struct ui *ui, const char *prompt, const struct range *range, int *res);
+
+struct choice {
+    const char *name;
+    char id;
+    char alt_id;
+    char chosen;
+};
+
+struct select {
+    int n_selected;
+    int n_choice;
+    struct choice *choices;
+};
+
+int ui_selection_menu_prompt(struct ui *ui, const char *prompt, struct select *sel);

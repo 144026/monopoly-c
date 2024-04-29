@@ -71,6 +71,7 @@ static void map_node_init(struct map_node *node, int idx, enum node_type type, i
 
     INIT_LIST_HEAD(&node->players);
     node->item = ITEM_INVALID;
+    node->item_owner = NULL;
     if (type == MAP_NODE_VACANCY)
         node->price = v;
     else if (type == MAP_NODE_MINE)
@@ -245,7 +246,7 @@ int map_move_player(struct map *map, struct player *player, int pos)
     return map_attach_player(map, player);
 }
 
-int map_place_item(struct map *map, int pos, enum item_type item)
+int map_place_item(struct map *map, int pos, enum item_type item, struct player *owner)
 {
     struct map_node *node;
 
@@ -270,6 +271,9 @@ int map_place_item(struct map *map, int pos, enum item_type item)
     }
 
     node->item = item;
+    if (owner)
+        node->item_owner = owner;
+
     return 0;
 }
 

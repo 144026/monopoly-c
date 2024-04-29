@@ -1,8 +1,15 @@
+#include <stdarg.h>
 #include "common.h"
 #include "game.h"
 #include "player.h"
 #include "ui.h"
 
+
+static const char item_ui_char[] = {
+    [ITEM_BLOCK] = '#',
+    [ITEM_BOMB] = '@',
+    [ITEM_ROBOT] = 'R',
+};
 
 static const char *player_ui_color[] = {
     [PLAYER_COLOR_INVALID] = "\e[0m",
@@ -13,34 +20,101 @@ static const char *player_ui_color[] = {
     [PLAYER_COLOR_WHITE] = "\e[37m",
 };
 
+int ui_init(struct ui *ui)
+{
+    int i;
 
-static void prompt_player_name(struct player *player)
+    memset(ui, 0, sizeof(*ui));
+    ui->in = stdin;
+    ui->out = stdout;
+    ui->err = stderr;
+
+    ui->in_buf_size = INPUT_BUF_SIZE;
+    ui->in_buf = calloc(1, INPUT_BUF_SIZE);
+    if (!ui->in_buf)
+        return -1;
+
+    ui->fmt_idx = 0;
+    ui->fmt_buf_size = FORMAT_BUF_SIZE;
+    ui->fmt_buf[0] = calloc(N_FORMAT_BUF, FORMAT_BUF_SIZE);
+    if (!ui->fmt_buf[0]) {
+        free(ui->in_buf);
+        return -2;
+    }
+    for (i = 1; i < N_FORMAT_BUF; i++) {
+        ui->fmt_buf[i] = ui->fmt_buf[0] + i * FORMAT_BUF_SIZE;
+    }
+
+    setvbuf(ui->in, NULL, _IONBF, 0);
+    return 0;
+}
+
+int ui_uninit(struct ui *ui)
+{
+    int i;
+
+    if (ui->in_buf) {
+        free(ui->in_buf);
+        ui->in_buf = NULL;
+        ui->in_buf_size = 0;
+    }
+
+    if (ui->fmt_buf[0]) {
+        free(ui->fmt_buf[0]);
+        for (i = 0; i < N_FORMAT_BUF; i++)
+            ui->fmt_buf[i] = NULL;
+
+        ui->fmt_buf_size = 0;
+        ui->fmt_idx = 0;
+    }
+    return 0;
+}
+
+static int ui_vsnprintf(char *buf, size_t size, const char *format, va_list ap)
+{
+    int n;
+
+    n = vsnprintf(buf, size, format, ap);
+
+    if (n < 0)
+        return 0;
+    if (n < size)
+        return n;
+    /* n >= size, no more space */
+    return size;
+}
+
+const char * ui_fmt(struct ui *ui, const char *fmt, ...)
+{
+    char *buf = ui->fmt_buf[ui->fmt_idx];
+    va_list ap;
+
+    va_start(ap, fmt);
+    ui_vsnprintf(buf, ui->fmt_buf_size, fmt, ap);
+    va_end(ap);
+
+    ui->fmt_idx += 1;
+    ui->fmt_idx %= N_FORMAT_BUF;
+    return buf;
+}
+
+void ui_prompt_player_name(struct ui *ui, struct player *player)
 {
     if (!player || !player->valid || !player->attached) {
-        fprintf(stdout, "NULL");
+        fprintf(ui->out, "NULL");
         return;
     }
 
-    fprintf(stdout, "%s", player_ui_color[player->color]);
+    fprintf(ui->out, "%s", player_ui_color[player->color]);
 
     if (!player->name)
-        fprintf(stdout, "%c", player_id_to_char(player));
+        fprintf(ui->out, "%c", player_id_to_char(player));
     else
-        fprintf(stdout, "%s", player->name);
+        fprintf(ui->out, "%s", player->name);
 
-    fprintf(stdout, "%s", player_ui_color[PLAYER_COLOR_INVALID]);
+    fprintf(ui->out, "%s", player_ui_color[PLAYER_COLOR_INVALID]);
 }
 
-int ui_game_prompt(struct game *game)
-{
-    if (game->state == GAME_STATE_RUNNING)
-        prompt_player_name(game->next_player);
-    else
-        fprintf(stdout, "enter 'start' to play");
-
-    fprintf(stdout, "> ");
-    return 0;
-}
 
 static void discard_line(FILE *where)
 {
@@ -53,21 +127,26 @@ static void discard_line(FILE *where)
 }
 
 /* @return NULL if eof, empty string if nothing is read */
-char *ui_read_line(FILE *where, char *buf, unsigned int size)
+char *ui_read_line(struct ui *ui)
 {
     char *ret;
+    char *buf = ui->in_buf;
+    int size = ui->in_buf_size;
 
-    if (size < 2) {
-        game_err("input buffer too small, can't read\n");
-        return "";
+    if (!buf || size < 2) {
+        game_err("input buffer error, can't read\n");
+        return NULL;
     }
+
     /* guard */
     buf[size - 2] = 0;
 
-    ret = fgets(buf, size, where);
+    ret = fgets(buf, size, ui->in);
     if (!ret) {
-        if (feof(where))
+        if (feof(ui->in)) {
+            game_dbg("end of file\n");
             return NULL;
+        }
         game_err("fail to read input\n");
         return "";
     }
@@ -76,8 +155,10 @@ char *ui_read_line(FILE *where, char *buf, unsigned int size)
     if (buf[size - 2] && buf[size - 2] != '\n') {
         game_err("line length exceeds maximum %d characters\n", size - 2);
         buf[size - 2] = '\n';
-        discard_line(where);
+        discard_line(ui->in);
     }
+
+    game_dbg("read line: %s", ret);
     return ret;
 }
 
@@ -114,6 +195,115 @@ int ui_cmd_tokenize(char *cmd, const char *argv[], int n)
     return argc;
 }
 
+/* @return: < 0 fatal err, == 0 try again, > 0 done */
+int ui_input_int_prompt(struct ui *ui, const char *prompt, const struct range *range, int *res)
+{
+    char *endptr, *line = NULL;
+    const char *toks[4];
+    int n_tok, num;
+
+    if (prompt)
+        fprintf(ui->out, "%s", prompt);
+
+    line = ui_read_line(ui);
+    if (!line)
+        return -1;
+
+    n_tok = ui_cmd_tokenize(line, toks, ARRAY_SIZE(toks));
+    if (n_tok == 0) {
+        return 0;
+    } else if (n_tok != 1) {
+        fprintf(ui->out, "input error, only one number is allowed, got %d\n", n_tok);
+        return 0;
+    }
+
+    endptr = NULL;
+    num = strtol(toks[0], &endptr, 10);
+    if (*endptr) {
+        fprintf(ui->out, "input not a valid number: %s\n", toks[0]);
+        return 0;
+    }
+
+    if (num < range->begin || num > range->end) {
+        fprintf(ui->out, "input number %d out of range [%ld, %ld]\n", num, range->begin, range->end);
+        return 0;
+    }
+
+    *res = num;
+    return 1;
+}
+
+/* @return: < 0 fatal err, == 0 try again, > 0 done */
+int ui_selection_menu_prompt(struct ui *ui, const char *prompt, struct select *sel)
+{
+    int i;
+    struct choice *choice;
+    char *line = NULL;
+    const char *toks[4];
+    int n_tok;
+
+    if (sel->n_choice <= 0)
+        return -1;
+
+    if (prompt)
+        fprintf(ui->out, "%s", prompt);
+
+    for (i = 0; i < sel->n_choice; i++) {
+        choice = &sel->choices[i];
+        if (choice->chosen)
+            continue;
+        if (!choice->id && !choice->alt_id)
+            continue;
+
+        fprintf(ui->out, "%c", choice->id);
+        if (choice->alt_id)
+            fprintf(ui->out, "|%c", choice->alt_id);
+
+        if (choice->name)
+            fprintf(ui->out, ") %s\n", choice->name);
+        else
+            fprintf(ui->out, ") %s\n", "NULL");
+    }
+    fprintf(ui->out, "input your choice? ");
+
+    line = ui_read_line(ui);
+    if (!line)
+        return -1;
+
+    n_tok = ui_cmd_tokenize(line, toks, ARRAY_SIZE(toks));
+    if (n_tok == 0) {
+        return 0;
+    } else if (n_tok != 1) {
+        fprintf(ui->out, "input error, only one choice is allowed, got %d\n", n_tok);
+        return 0;
+    } else if (strlen(toks[0]) != 1) {
+        fprintf(ui->out, "input error, only one choice is allowed, got %s\n", toks[0]);
+        return 0;
+    }
+
+    for (i = 0; i < sel->n_choice; i++) {
+        choice = &sel->choices[i];
+        if (choice->chosen)
+            continue;
+        if (!choice->id && !choice->alt_id)
+            continue;
+
+        if (choice->id == toks[0][0])
+            break;
+        if (choice->alt_id && choice->alt_id == toks[0][0])
+            break;
+    }
+
+    if (i < sel->n_choice) {
+        choice->chosen = 1;
+        sel->n_selected++;
+        return 1;
+    }
+
+    fprintf(ui->out, "input error, %s is not in one of the choices\n", toks[0]);
+    return 0;
+}
+
 
 static const char node_render_tab[MAP_NODE_MAX] = {
     [MAP_NODE_START] = 'S',
@@ -127,11 +317,11 @@ static const char node_render_tab[MAP_NODE_MAX] = {
     [MAP_NODE_PARK] = 'P',
 };
 
-static void map_node_render(struct map *map, unsigned line, unsigned col)
+static void map_node_render(struct ui *ui, struct map *map, unsigned line, unsigned col)
 {
     int pos = -1;
     struct map_node *node;
-    struct player *player;
+    struct player *player, *owner;
 
     if (line == 0) {
         pos = col;
@@ -144,7 +334,7 @@ static void map_node_render(struct map *map, unsigned line, unsigned col)
     }
 
     if (pos < 0) {
-        putchar(' ');
+        fputc(' ', ui->out);
         return;
     }
 
@@ -153,90 +343,45 @@ static void map_node_render(struct map *map, unsigned line, unsigned col)
         return;
     }
 
+    /* player char always on top */
     node = &map->nodes[pos];
-    if (list_empty(&node->players)) {
-        putchar(node_render_tab[node->type]);
+    if (!list_empty(&node->players)) {
+        player = list_first_entry(&node->players, struct player, pos_list);
+        fprintf(ui->out, "%s", player_ui_color[player->color]);
+        fputc(player_id_to_char(player), ui->out);
+        fprintf(ui->out, "%s", player_ui_color[PLAYER_COLOR_INVALID]);
         return;
     }
 
-    player = list_first_entry(&node->players, struct player, pos_list);
-    putchar(player_id_to_char(player));
+    if (node->item > ITEM_INVALID && node->item < ITEM_MAX) {
+        owner = node->item_owner;
+        if (owner)
+            fprintf(ui->out, "%s", player_ui_color[owner->color]);
+        fputc(item_ui_char[node->item], ui->out);
+        if (owner)
+            fprintf(ui->out, "%s", player_ui_color[PLAYER_COLOR_INVALID]);
+        return;
+    }
+
+    if (!node->owner) {
+        fputc(node_render_tab[node->type], ui->out);
+        return;
+    }
+    owner = node->owner;
+
+    fprintf(ui->out, "%s", player_ui_color[owner->color]);
+    fputc(node_render_tab[node->type] + node->level, ui->out);
+    fprintf(ui->out, "%s", player_ui_color[PLAYER_COLOR_INVALID]);
+    return;
 }
 
-void ui_map_render(struct map *map)
+void ui_map_render(struct ui *ui, struct map *map)
 {
     int line, col;
 
     for (line = 0; line < map->height; line++) {
         for (col = 0; col < map->width; col++)
-            map_node_render(map, line, col);
-        putchar('\n');
+            map_node_render(ui, map, line, col);
+        fputc('\n', ui->out);
     }
-}
-
-void dump_exit_player_asset(int id_char, struct asset *asset)
-{
-    struct map_node *estate;
-
-    list_for_each_entry(estate, &asset->estates, estates_list) {
-        fprintf(stderr, "map %d %c %d\n", estate->idx, id_char, estate->level);
-    }
-    fprintf(stderr, "fund %c %d\n", id_char, asset->n_money);
-    fprintf(stderr, "credit %c %d\n", id_char, asset->n_points);
-}
-
-void dump_exit_player_item(int id_char, struct asset *asset)
-{
-    if (asset->n_bomb)
-        fprintf(stderr, "gift %c bomb %d\n", id_char, asset->n_bomb);
-
-    if (asset->n_block)
-        fprintf(stderr, "gift %c block %d\n", id_char, asset->n_block);
-
-    if (asset->n_robot)
-        fprintf(stderr, "gift %c robot %d\n", id_char, asset->n_robot);
-}
-
-void dump_exit_player(struct player *player)
-{
-    struct map_node *node;
-    int id_char = player_id_to_char(player);
-
-    dump_exit_player_asset(id_char, &player->asset);
-    fprintf(stderr, "userloc %c %d %d\n", id_char, player->pos, player->buff.n_empty_rounds);
-
-    dump_exit_player_item(id_char, &player->asset);
-    if (player->buff.n_god_buff + player->buff.b_god_buff)
-        fprintf(stderr, "gift %c god %d\n", id_char, player->buff.n_god_buff + player->buff.b_god_buff);
-}
-
-void dump_exit(struct game *game)
-{
-    int i;
-    struct map_node *node;
-    struct player *player;
-
-    if (game->cur_player_nr)
-        fprintf(stderr, "user ");
-
-    for_each_player_begin(game, player) {
-        fprintf(stderr, "%c", player_id_to_char(player));
-    } for_each_player_end()
-
-    if (game->cur_player_nr)
-        fprintf(stderr, "\n");
-
-    for_each_player_begin(game, player) {
-        dump_exit_player(player);
-    } for_each_player_end()
-
-    for (i = 0; i < game->map.n_used; i++) {
-        node = &game->map.nodes[i];
-        if (node->item == ITEM_BLOCK)
-            fprintf(stderr, "barrier %d\n", node->idx);
-    }
-
-    if (game->cur_player_nr)
-        fprintf(stderr, "nextuser %c\n", player_id_to_char(game->next_player));
-    exit(EXIT_SUCCESS);
 }

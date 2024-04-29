@@ -1,5 +1,6 @@
 #pragma once
 #include "list.h"
+#include "player.h"
 
 #define AREA_1_PRICE        200
 #define AREA_2_PRICE        500
@@ -55,6 +56,7 @@ struct map_node {
 
     struct list_head players;
     enum item_type item;
+    struct player *item_owner;
     union {
         int price;
         int points;
@@ -124,6 +126,6 @@ int map_attach_player(struct map *map, struct player *player);
 int map_detach_player(struct map *map, struct player *player);
 int map_move_player(struct map *map, struct player *player, int pos);
 
-int map_place_item(struct map *map, int pos, enum item_type item);
+int map_place_item(struct map *map, int pos, enum item_type item, struct player *owner);
 
 int map_set_owner(struct map *map, int pos, struct player *owner);

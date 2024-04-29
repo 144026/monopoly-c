@@ -1,13 +1,17 @@
 #pragma once
 #include "player.h"
 #include "map.h"
-
-#define MAX_INPUT_LEN 512
-#define INPUT_BUF_SIZE (MAX_INPUT_LEN + 2)
+#include "ui.h"
 
 enum game_state {
-    GAME_STATE_INIT = 0,
+    /* resource freed */
+    GAME_STATE_UNINIT = 0,
+    /* resource allocated, minial prompt */
+    GAME_STATE_INIT,
+    /* intermidate state, invisible to player/effects */
+    GAME_STATE_START,
     GAME_STATE_RUNNING,
+    /* freeze game, keep all states */
     GAME_STATE_STOPPED,
     GAME_STAT_MAX,
 };
@@ -15,19 +19,25 @@ enum game_state {
 struct game {
     enum game_state state;
     int need_dump;
-    char input_buf[INPUT_BUF_SIZE];
+
+    struct ui ui;
 
     struct map map;
     const struct map_layout *cur_layout;
 
+    int default_money;
     struct player players[PLAYER_MAX];
+
     int cur_player_nr;
     struct player *cur_players[PLAYER_MAX];
+
     int next_player_seq;
     struct player *next_player;
-    int default_money;
 };
 
+#define GAME_DEFAULT_MONEY      10000
+#define GAME_DEFAULT_MONEY_MIN  1000
+#define GAME_DEFAULT_MONEY_MAX  50000
 #define GAME_PLAYER_MIN 2
 #define GAME_PLAYER_MAX 4
 
@@ -50,4 +60,4 @@ enum {
 
 void game_stop(struct game *game, int need_dump);
 void game_exit(struct game *game);
-
+void game_dump(struct game *game);
