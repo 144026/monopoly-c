@@ -274,12 +274,19 @@ static int game_prompt_action(struct game *game)
 
 int game_before_action(struct game *game)
 {
+    int skip = 0;
+    struct player *player = game->next_player;
+
     if (game->state != GAME_STATE_RUNNING)
         return 0;
 
+    if (player->buff.n_empty_rounds)
+        skip = 1;
+
     if (game->next_player)
-        player_buff_countdown(game->next_player);
-    return 0;
+        player_buff_countdown(player);
+
+    return skip;
 }
 
 static int game_prompt_buy(struct game *game, struct player *player, struct map_node *node)
@@ -351,9 +358,21 @@ out_stop:
 
 static int game_player_pay_toll(struct game *game, struct player *player, struct map_node *node)
 {
+    struct ui *ui = &game->ui;
     int price = map_node_price(node);
 
+    fprintf(ui->out, "[TOLL] Need to pay %d.\n", price);
+    if (player->buff.n_god_buff > 0) {
+        fprintf(ui->out, "[GOD] God of wealth helped you out.\n");
+        return 0;
+    }
+
     player->asset.n_money -= price;
+    if (player->asset.n_money < 0) {
+        fprintf(ui->out, "[BANKRUPT] Went backrupt, debt %d.\n", player->asset.n_money);
+        return 0;
+    }
+
     node->owner->asset.n_money += price;
     return 0;
 }
@@ -376,10 +395,21 @@ static int game_after_player_done(struct game *game)
     case MAP_NODE_ITEM_HOUSE:
     case MAP_NODE_GIFT_HOUSE:
     case MAP_NODE_MAGIC_HOUSE:
+        break;
+
     case MAP_NODE_PRISON:
+        player->buff.n_empty_rounds = 2;
+        fprintf(game->ui.out, "[PRISON] Caught and handcuffed.\n");
+        break;
+
     case MAP_NODE_MINE:
-    case MAP_NODE_HOSPITAL:
+        player->asset.n_points += node->points;
+        fprintf(game->ui.out, "[MINE] Got %d points.\n", node->points);
+        break;
+
     case MAP_NODE_PARK:
+        fprintf(game->ui.out, "[PARK] Enjoy yourself.\n");
+        break;
     default:
         break;
     }
@@ -616,14 +646,14 @@ static int game_cmd_preset_nextuser(struct game *game, int argc, const char *arg
     int char_id;
     struct player *player;
 
-    if (argc != 2)
+    if (argc != 3)
         return -1;
 
-    char_id = argv[1][0];
+    char_id = argv[2][0];
     if (!isprint(char_id))
         return -1;
 
-    player = game_get_player_by_id(game, argv[1]);
+    player = game_get_player_by_id(game, argv[2]);
     if (!player) {
         game_err("fail to find user with id: %s\n", argv[1]);
         return -1;
@@ -769,13 +799,15 @@ static int game_player_step(struct game *game, struct player *player, int step)
     int is_backward = 0;
     int n, pos;
 
-    if (step == 0) {
-        game_err("step %d invalid\n", step);
-        return -1;
-    }
     if (!player->valid || !player->attached) {
         game_err("player invalid\n");
         return -1;
+    }
+
+    if (step == 0) {
+        game_dbg("step 0 hack\n", step);
+        pos = player->pos;
+        goto step_into;
     }
 
     if (step < 0) {
@@ -790,6 +822,7 @@ static int game_player_step(struct game *game, struct player *player, int step)
         else
             pos = (player->pos + n) % map->n_used;
 
+step_into:
         node = &map->nodes[pos];
         if (node->item == ITEM_BLOCK) {
             fprintf(ui->out, "[STEP] Walked %d step(s) forward.\n", n);
