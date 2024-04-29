@@ -22,6 +22,7 @@ struct game {
 
     struct ui ui;
 
+    int dice_facets;
     struct map map;
     const struct map_layout *cur_layout;
 
@@ -35,9 +36,12 @@ struct game {
     struct player *next_player;
 };
 
+#define GAME_DEFAULT_DICE_SAHPE 6
+
 #define GAME_DEFAULT_MONEY      10000
 #define GAME_DEFAULT_MONEY_MIN  1000
 #define GAME_DEFAULT_MONEY_MAX  50000
+
 #define GAME_PLAYER_MIN 2
 #define GAME_PLAYER_MAX 4
 

@@ -311,3 +311,34 @@ int map_set_owner(struct map *map, int pos, struct player *owner)
     return 0;
 }
 
+int map_nearest_node_from(const struct map *map, const struct map_layout *layout, int from, enum node_type type)
+{
+    int distance;
+    int pos;
+    struct map_node *node;
+
+    if (from < 0 || from >= map->n_used)
+        return -1;
+
+    if (layout->map_size != map->n_used) {
+        game_err("layout size %d and map size %d not match\n", layout->map_size, map->n_used);
+        return -1;
+    }
+
+    for (distance = 1; 2 * distance <= map->n_used; distance++) {
+        /* look forward */
+        pos = (from + distance) % map->n_used;
+        node = &map->nodes[pos];
+        if (node->type == type)
+            return pos;
+
+        /* look backward */
+        pos = (from - distance + map->n_used) % map->n_used;
+        node = &map->nodes[pos];
+        if (node->type == type)
+            return pos;
+    }
+
+    return -1;
+}
+

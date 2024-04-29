@@ -235,6 +235,7 @@ int game_init(struct game *game)
     if (ui_init(&game->ui))
         goto err;
 
+    game->dice_facets = GAME_DEFAULT_DICE_SAHPE;
     if (game_init_map(game))
         goto err_ui;
 
@@ -339,6 +340,7 @@ static int game_cmd_preset_user(struct game *game, int argc, const char *argv[])
 
     if (game_add_players(game, idxs, n_id)) {
         game_err("preset add players fail\n");
+        game_del_all_players(game);
         return -3;
     }
 
@@ -651,6 +653,89 @@ out_stop:
     return -1;
 }
 
+static int game_player_step(struct game *game, struct player *player, int step)
+{
+    struct ui *ui = &game->ui;
+    struct map *map = &game->map;
+    struct map_node *node;
+    int is_backward = 0;
+    int n, pos;
+
+    if (step == 0) {
+        game_err("step %d invalid\n", step);
+        return -1;
+    }
+    if (!player->valid || !player->attached) {
+        game_err("player invalid\n");
+        return -1;
+    }
+
+    if (step < 0) {
+        step = -step;
+        is_backward = 1;
+    }
+
+    /* walk */
+    for (n = 1; n <= step; n++) {
+        if (is_backward)
+            pos = (player->pos - n + map->n_used) % map->n_used;
+        else
+            pos = (player->pos + n) % map->n_used;
+
+        node = &map->nodes[pos];
+        if (node->item == ITEM_BLOCK) {
+            fprintf(ui->out, "[STEP] Walked %d step(s) forward.\n", n);
+            fprintf(ui->out, "[BLOCK] Oh! Stop here.\n");
+            if (map_move_player(map, player, pos))
+                return -1;
+            return 1;
+        }
+        if (node->item == ITEM_BOMB) {
+            int hospital_pos;
+
+            fprintf(ui->out, "[STEP] Walked %d step(s) forward.\n", n);
+            fprintf(ui->out, "[BOMB] Explosion! Transferred to nearest hospital, rest 3 rounds\n");
+
+            hospital_pos = map_nearest_node_from(map, game->cur_layout, pos, MAP_NODE_HOSPITAL);
+            if (map_move_player(map, player, pos))
+                return -1;
+            player->buff.n_empty_rounds = 3;
+            return 1;
+        }
+    }
+
+    if (map_move_player(map, player, pos))
+        return -1;
+    fprintf(ui->out, "[STEP] Walked %d step(s) forward.\n", step);
+    return 1;
+}
+
+static int game_cmd_roll(struct game *game)
+{
+    return game_player_step(game, game->next_player, 1 + rand() % game->dice_facets);
+}
+
+static int game_cmd_step(struct game *game, int argc, const char *argv[])
+{
+    struct ui *ui = &game->ui;
+    int step;
+    char *endptr;
+
+    if (argc != 2 || !argv[1]) {
+        fprintf(ui->out, "step command syntax error\n");
+        return -1;
+    }
+
+    endptr = NULL;
+    step = strtol(argv[1], &endptr, 10);
+    if (*endptr) {
+        fprintf(ui->out, "not a valid number: %s\n", argv[1]);
+        return -1;
+    }
+
+    return game_player_step(game, game->next_player, step);
+}
+
 static void game_cmd_help(struct game *game)
 {
     struct ui *ui = &game->ui;
@@ -701,6 +786,18 @@ static int game_handle_command(struct game *game, char *line)
         if (!strcmp(cmd, "start"))
             return game_cmd_start(game);
         return -1;
+    }
+
+    /* real game commands */
+    if (!strcmp(cmd, "roll")) {
+        return game_cmd_roll(game);
+
+    } else if (!strcmp(cmd, "sell")) {
+    } else if (!strcmp(cmd, "query")) {
+    } else if (!strcmp(cmd, "block")) {
+    } else if (!strcmp(cmd, "robot")) {
+    } else if (!strcmp(cmd, "step")) {
+        return game_cmd_step(game, argc, argv);
     }
 
     game_err("cmd '%s' unknown\n", cmd);
