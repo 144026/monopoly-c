@@ -1,0 +1,18 @@
+user AQS
+
+fund A 10000
+fund Q 10000
+fund S 10000
+
+gift S barrier 1
+barrier 32
+
+credit A 0
+credit Q 0
+credit S 0
+
+userloc A 30 0
+userloc Q 38 0
+userloc S 38 0
+
+nextuser S

@@ -1,0 +1,11 @@
+preset user AQS
+
+preset userloc A 3 0
+preset userloc Q 5 0
+preset userloc S 7 0
+preset gift A barrier 1
+
+block -3 # put barrier at 0
+step 5
+n
+dump

@@ -1,0 +1,14 @@
+preset user AQJ
+
+preset gift Q barrier 3
+
+preset userloc A 0 0
+preset userloc Q 10 0
+
+preset nextuser Q
+
+block 5
+block 5
+step 10
+n
+dump

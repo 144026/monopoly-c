@@ -1,0 +1,26 @@
+preset user AQS
+
+preset fund A 1000
+preset fund Q 2000
+preset fund S 1000
+
+preset gift A barrier 2
+preset gift Q barrier 2
+
+preset credit A 10
+preset credit Q 10
+preset credit S 10
+
+preset nextuser A
+
+step 6 #A
+n
+block 6 #put barrier at A(6)
+step 3 #Q
+n
+step 3 #S
+n
+step 5 #A
+n
+dump
+

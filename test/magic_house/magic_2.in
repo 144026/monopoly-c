@@ -1,0 +1,17 @@
+preset user AQJS
+step 63 #A:63
+3
+step 63 #Q:63
+3
+step 1 #J:1
+n
+step 10 #A:63->3
+n
+step 10 #Q:63->3
+n
+step 1 #J:1->2
+n
+step 1 #A:3->4
+n
+
+dump

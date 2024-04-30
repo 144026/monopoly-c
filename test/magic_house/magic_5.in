@@ -1,0 +1,5 @@
+preset user AQS
+
+step 63 #A
+2 # stop A himself
+dump

@@ -1,0 +1,9 @@
+preset user AQS
+
+step 63 #A
+2 # stop A himself
+step 63 #Q
+1 #stop Q herself
+step 63 #S
+3 #stop S herself
+dump

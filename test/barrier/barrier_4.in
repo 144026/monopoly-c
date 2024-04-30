@@ -1,0 +1,38 @@
+preset user AQSJ
+
+preset credit A 100
+preset credit Q 200
+preset credit S 234
+preset credit J 333
+
+preset gift A barrier 2
+preset gift Q barrier 1
+preset gift S barrier 2
+preset gift J barrier 3
+
+preset userloc A 2 0
+preset userloc Q 16 0
+preset userloc S 22 0
+preset userloc J 34 0
+
+preset nextuser A#hhh
+
+block -2# put barrier at 0
+step 5 #A:2->7
+n
+block -2 #Q
+step 0#Q:16->16
+n
+block 6#S put barrier at tool house
+step 6 #S:22->28 through
+1
+f
+block 1 #J
+step 1#J:34->35
+1
+
+dump
+
+
+
+

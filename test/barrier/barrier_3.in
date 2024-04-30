@@ -1,0 +1,11 @@
+preset user AQS
+
+preset gift A barrier 1
+
+step 5 #A
+n
+step 10 #Q
+n
+step 0 #S start can not buy house
+block 5
+dump

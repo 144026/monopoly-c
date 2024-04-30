@@ -1,0 +1,16 @@
+preset user AQS
+
+preset credit A 100
+preset credit Q 200
+preset credit S 333
+
+preset gift Q barrier 1
+
+preset userloc A 25 0
+preset userloc Q 31 0
+
+step 3 #A:25->28
+1
+f
+block -3 #Q:put barrier at 28
+dump

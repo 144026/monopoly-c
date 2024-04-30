@@ -1,0 +1,17 @@
+preset user AQ
+
+preset userloc A 60 0
+preset userloc Q 57 0
+
+preset gift A barrier 2
+preset gift Q barrier 0
+
+block 3 #A put barrier at 63
+step 3#A:60->63
+1 #Q
+block -6 #barrier at 57
+step 3 #A:63->66
+step 1 #A:66->67
+step 5 #Q:57->62
+n
+dump
