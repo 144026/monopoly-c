@@ -1,9 +1,9 @@
 user AQ
-fund A 9800
+fund A 9900
 credit A 0
 userloc A 2 0
 map 2 Q 0
-fund Q 10200
+fund Q 10100
 credit Q 0
 userloc Q 0 0
 nextuser Q

@@ -361,7 +361,7 @@ out_stop:
 static int game_player_pay_toll(struct game *game, struct player *player, struct map_node *node)
 {
     struct ui *ui = &game->ui;
-    int price = map_node_price(node);
+    int price = map_node_price(node) / 2;
 
     assert(node->type == MAP_NODE_VACANCY);
 
