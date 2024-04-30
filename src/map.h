@@ -164,6 +164,13 @@ struct map_layout {
 
 extern const struct map_layout *g_default_map_layout;
 
+enum map_layout_ver {
+    MAP_LAYOUT_V1,
+    MAP_LAYOUT_V2,
+};
+
+void map_set_default_layout(enum map_layout_ver ver);
+
 int map_init(struct map *map, const struct map_layout *layout);
 void map_free(struct map *map);
 

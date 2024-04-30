@@ -17,8 +17,10 @@ enum game_state {
 };
 
 enum game_option {
+    GAME_OPT_DEBUG,
     GAME_OPT_MANUAL_SKIP,
     GAME_OPT_SELL_BOMB,
+    GAME_OPT_OLD_MAP,
     GAME_OPT_MAX,
 };
 
@@ -57,7 +59,7 @@ struct game {
     int max_sell_per_turn;
 };
 
-#define GAME_DEFAULT_DICE_SAHPE 6
+#define GAME_DEFAULT_DICE_SHAPE 6
 
 #define GAME_DEFAULT_MONEY      10000
 #define GAME_DEFAULT_MONEY_MIN  1000

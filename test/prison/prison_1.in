@@ -1,0 +1,32 @@
+preset option oldmap on
+preset user AQS        # 3 users AQS play in order
+preset map 33 A 0      # S has an empty property at Map Block
+preset map 60 S 0      # S has an empty property at Map Block 60
+
+preset fund A 2000   # $2000 for A
+preset fund Q 5000   # $5000 for Q
+preset fund S 1000   # $1000 for S
+
+# guard command line even if player A becomes empty
+preset option mskip on
+
+preset userloc A 49 1 # A stayed in Prison 1 days
+preset userloc S 36 0 # S near the Gift
+
+preset nextuser Q     # next interactive player is S
+
+preset option mskip off
+
+step 2  # Q
+Y
+sell 60 # S
+step 2  # S
+N
+step 2  # Q
+N
+step 2  # S
+N
+step 2  # A
+N
+
+dump

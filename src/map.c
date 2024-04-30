@@ -30,9 +30,9 @@ const struct map_layout g_default_map_layout_v1 = {
     .gifts = {
         .n_gifts = GIFT_MAX,
         .gifts = {
-            [GIFT_MONEY] = {.value = 2000, .name = "Bonus Cash",         .grant = player_grant_gift_money},
-            [GIFT_POINT] = {.value = 200,  .name = "Point Card",    .grant = player_grant_gift_point},
-            [GIFT_GOD]   = {.value = 5,    .name = "God of Wealth", .grant = player_grant_gift_god},
+            [GIFT_MONEY] = { .value = 2000, .name = "Bonus Cash",    .grant = player_grant_gift_money },
+            [GIFT_POINT] = { .value = 200,  .name = "Point Card",    .grant = player_grant_gift_point },
+            [GIFT_GOD]   = { .value = 5,    .name = "God of Wealth", .grant = player_grant_gift_god },
         }
     },
 
@@ -78,9 +78,9 @@ const struct map_layout g_default_map_layout_v2 = {
     .gifts = {
         .n_gifts = GIFT_MAX,
         .gifts = {
-            [GIFT_MONEY] = {.value = 2000, .name = "Bonus Cash",         .grant = player_grant_gift_money},
-            [GIFT_POINT] = {.value = 200,  .name = "Point Card",    .grant = player_grant_gift_point},
-            [GIFT_GOD]   = {.value = 5,    .name = "God of Wealth", .grant = player_grant_gift_god},
+            [GIFT_MONEY] = { .value = 2000, .name = "Bonus Cash",    .grant = player_grant_gift_money },
+            [GIFT_POINT] = { .value = 200,  .name = "Point Card",    .grant = player_grant_gift_point },
+            [GIFT_GOD]   = { .value = 5,    .name = "God of Wealth", .grant = player_grant_gift_god },
         }
     },
 
@@ -97,6 +97,18 @@ const struct map_layout g_default_map_layout_v2 = {
 };
 
 const struct map_layout *g_default_map_layout = &g_default_map_layout_v2;
+
+void map_set_default_layout(enum map_layout_ver ver)
+{
+    switch (ver) {
+    case MAP_LAYOUT_V1:
+        g_default_map_layout = &g_default_map_layout_v1;
+        break;
+    case MAP_LAYOUT_V2:
+        g_default_map_layout = &g_default_map_layout_v2;
+        break;
+    }
+}
 
 static int map_alloc(struct map *map, int n_node)
 {

@@ -4,10 +4,12 @@
 #include "player.h"
 #include "ui.h"
 
-const static struct game_options default_option = {
+static const struct game_options default_option = {
     .opts = {
+        [GAME_OPT_DEBUG] = { .name = "debug" },
         [GAME_OPT_MANUAL_SKIP] = { .name = "mskip", .on = 0 },
         [GAME_OPT_SELL_BOMB] = { .name = "sell_bomb", .on = 0 },
+        [GAME_OPT_OLD_MAP] = { .name = "oldmap" },
     }
 };
 
@@ -246,7 +248,7 @@ int game_init(struct game *game)
     if (ui_init(&game->ui))
         goto err;
 
-    game->dice_facets = GAME_DEFAULT_DICE_SAHPE;
+    game->dice_facets = GAME_DEFAULT_DICE_SHAPE;
     if (game_init_map(game))
         goto err_ui;
 
@@ -965,25 +967,6 @@ static inline int game_cmd_preset_bomb(struct game *game, int argc, const char *
     return game_cmd_preset_item(game, ITEM_BOMB, argc, argv);
 }
 
-static int game_cmd_preset_debug(struct game *game, int argc, const char *argv[])
-{
-    if (argc != 3) {
-        fprintf(game->ui.out, "usage: preset debug on|off\n");
-        return -1;
-    }
-    if (!strcmp(argv[2], "1") || !strcmp(argv[2], "on")) {
-        g_game_dbg = 1;
-        return 0;
-    }
-    if (!strcmp(argv[2], "0") || !strcmp(argv[2], "off")) {
-        g_game_dbg = 0;
-        return 0;
-    }
-
-    fprintf(game->ui.out, "usage: preset debug on|off\n");
-    return -1;
-}
-
 static int game_cmd_preset_option(struct game *game, int argc, const char *argv[])
 {
     int i;
@@ -1016,6 +999,9 @@ static int game_cmd_preset_option(struct game *game, int argc, const char *argv[
         return -1;
     }
 
+    if (i == GAME_OPT_DEBUG) {
+        g_game_dbg = game->option.opts[i].on;
+    }
     if (i == GAME_OPT_SELL_BOMB) {
         int j;
         for (j = 0; j < game->cur_layout->n_item_house; j++) {
@@ -1025,6 +1011,13 @@ static int game_cmd_preset_option(struct game *game, int argc, const char *argv[
             assert(node->type == MAP_NODE_ITEM_HOUSE);
             node->item_house.items.info[ITEM_BOMB].on_sell = game->option.opts[i].on;
         }
+    }
+    if (i == GAME_OPT_OLD_MAP) {
+        /* for test only, take effect at next game_map_init() */
+        if (game->option.opts[i].on)
+            map_set_default_layout(MAP_LAYOUT_V1);
+        else
+            map_set_default_layout(MAP_LAYOUT_V2);
     }
 
     return 0;
@@ -1063,9 +1056,6 @@ static int game_cmd_preset(struct game *game, int argc, const char *argv[])
 
     } else if (!strcmp(subcmd, "bomb")) {
         return game_cmd_preset_bomb(game, argc, argv);
-
-    } else if (!strcmp(subcmd, "debug")) {
-        return game_cmd_preset_debug(game, argc, argv);
 
     } else if (!strcmp(subcmd, "option")) {
         return game_cmd_preset_option(game, argc, argv);
