@@ -1,0 +1,20 @@
+user AQS
+
+map 60 Q 0
+map 33 A 1
+
+fund A 10000
+fund Q 10000
+fund S 10000
+
+gift Q robot 1
+
+credit A 80
+credit Q 4970
+credit S 100
+
+userloc A 64 0
+userloc Q 28 0
+userloc S 3 0
+
+nextuser A

@@ -1,0 +1,24 @@
+preset user AQS
+preset map 16 A 0
+preset map 60 Q 0
+preset map 33 S 0
+
+preset credit A 20
+preset credit Q 5000
+preset credit S 100
+
+preset userloc A 14 0
+preset userloc Q 26 0
+preset userloc S 65 0
+
+preset nextuser S
+
+step 1 #S:65->66
+step 3 #A:14->17
+n
+step 1 #Q:26->27
+y
+step 1 #S:66->67
+sell 16 #A
+
+dump

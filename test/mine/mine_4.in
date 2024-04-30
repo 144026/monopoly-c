@@ -1,0 +1,12 @@
+preset user AQSJ
+
+preset userloc A 62 0
+preset userloc Q 62 0
+preset userloc S 62 0
+preset userloc J 62 0
+
+step 2 #A
+step 3
+step 4
+step 5
+dump

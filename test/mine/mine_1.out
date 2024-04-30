@@ -1,0 +1,16 @@
+user AQS
+map 33 A 0
+map 60 S 0
+fund A 10000
+fund Q 10000
+fund S 10000
+
+credit A 20560
+credit Q 5000
+credit S 180
+
+userloc A 65 0
+userloc Q 0 0
+userloc S 65 0
+
+nextuser Q
