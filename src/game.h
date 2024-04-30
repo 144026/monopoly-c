@@ -18,6 +18,7 @@ enum game_state {
 
 enum game_option {
     GAME_OPT_MANUAL_SKIP,
+    GAME_OPT_SELL_BOMB,
     GAME_OPT_MAX,
 };
 

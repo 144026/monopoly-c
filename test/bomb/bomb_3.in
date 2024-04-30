@@ -1,4 +1,5 @@
 preset user AQJ
+preset option mskip on
 preset userloc A 10 0
 preset gift A bomb 3
 bomb -6

@@ -1,11 +1,15 @@
 preset user AQJ
+preset option mskip on
 preset userloc A 45 0
 preset userloc Q 44 0
 preset userloc J 46 0
 preset gift A bomb 3
+# 'Bomb' not alllowed at special map pos 49 (type 8)
 bomb 4
 bomb 1
 step 2
+n
 step 2
+n
 step 3
 dump

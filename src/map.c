@@ -23,7 +23,7 @@ const struct map_layout g_default_map_layout_v1 = {
     .items = {
         .info = {
             {.type = ITEM_BLOCK, .on_sell = 1, .price = 50},
-            {.type = ITEM_BOMB,  .on_sell = 0, .price = 0},
+            {.type = ITEM_BOMB,  .on_sell = 0, .price = 50},
             {.type = ITEM_ROBOT, .on_sell = 1, .price = 30},
         }
     },
@@ -71,7 +71,7 @@ const struct map_layout g_default_map_layout_v2 = {
     .items = {
         .info = {
             {.type = ITEM_BLOCK, .on_sell = 1, .price = 50},
-            {.type = ITEM_BOMB,  .on_sell = 0, .price = 0},
+            {.type = ITEM_BOMB,  .on_sell = 0, .price = 50},
             {.type = ITEM_ROBOT, .on_sell = 1, .price = 30},
         }
     },

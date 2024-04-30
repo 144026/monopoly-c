@@ -1,4 +1,5 @@
 preset user AQJ
+preset option mskip on
 preset bomb 3
 preset bomb 2
 preset bomb 1

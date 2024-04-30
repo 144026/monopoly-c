@@ -6,6 +6,7 @@
 const static struct game_options default_option = {
     .opts = {
         [GAME_OPT_MANUAL_SKIP] = { .name = "mskip", .on = 0 },
+        [GAME_OPT_SELL_BOMB] = { .name = "sell_bomb", .on = 0 },
     }
 };
 
@@ -426,6 +427,7 @@ static int game_prompt_item_house(struct game *game, struct player *player, stru
 
     choices[ITEM_MAX].name = "Exit from item house";
     choices[ITEM_MAX].id = 'f';
+    choices[ITEM_MAX].alt_id = 'q';
 
     sel.n_selected = 0;
     sel.n_choice = ARRAY_SIZE(choices);
@@ -455,9 +457,10 @@ static int game_prompt_item_house(struct game *game, struct player *player, stru
 
         asset->n_points -= chosen->price;
         fprintf(ui->out, "[ITEM HOUSE] Bought '%s', payed %d points.\n", choices[sel.cur_choice].name, chosen->price);
-        /* FIXME: change struct asset to be be fully generic */
         if (sel.cur_choice == ITEM_BLOCK)
             asset->n_block++;
+        else if (sel.cur_choice == ITEM_BOMB)
+            asset->n_bomb++;
         else if (sel.cur_choice == ITEM_ROBOT)
             asset->n_robot++;
 
@@ -952,6 +955,7 @@ static int game_cmd_preset_debug(struct game *game, int argc, const char *argv[]
 static int game_cmd_preset_option(struct game *game, int argc, const char *argv[])
 {
     int i;
+    int set = 0;
 
     if (argc != 4) {
         game_err("usage: preset option OPT on|off\n");
@@ -969,15 +973,29 @@ static int game_cmd_preset_option(struct game *game, int argc, const char *argv[
 
     if (!strcmp(argv[3], "1") || !strcmp(argv[3], "on")) {
         game->option.opts[i].on = 1;
-        return 0;
+        set = 1;
     }
     if (!strcmp(argv[3], "0") || !strcmp(argv[3], "off")) {
         game->option.opts[i].on = 0;
-        return 0;
+        set = 1;
+    }
+    if (!set) {
+        game_err("unknown option value %s\n", argv[3]);
+        return -1;
     }
 
-    game_err("unknown option value %s\n", argv[3]);
-    return -1;
+    if (i == GAME_OPT_SELL_BOMB) {
+        int j;
+        for (j = 0; j < game->cur_layout->n_item_house; j++) {
+            int pos = game->cur_layout->pos_item_house[j];
+            struct map_node *node = &game->map.nodes[pos];
+
+            assert(node->type == MAP_NODE_ITEM_HOUSE);
+            node->item_house.items.info[ITEM_BOMB].on_sell = game->option.opts[i].on;
+        }
+    }
+
+    return 0;
 }
 
 static int game_cmd_preset(struct game *game, int argc, const char *argv[])

@@ -1,11 +1,19 @@
 preset user AQJ
-preset userloc A 33 0
-preset userloc Q 32 0
-preset userloc J 32 0
+preset option mskip on
+preset option sell_bomb on
+# new tool house location
+preset userloc A 26 0
+preset userloc Q 25 0
+preset userloc J 25 0
 preset gift A bomb 3
+# 'Bomb' not alllowed at special map pos 28 (type 2).
 bomb 2
 step 1
+n
 step 3
 step 3
-1
+# buy bomb
+preset credit A 50
+step 1
+2
 dump

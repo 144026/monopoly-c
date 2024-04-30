@@ -4,6 +4,6 @@ fund Q 10000
 credit A 0
 credit Q 0
 userloc A 48 0
-userloc Q 49 2
+userloc Q 49 0
 gift A bomb 3
 nextuser A

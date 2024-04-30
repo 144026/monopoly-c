@@ -1,8 +1,11 @@
 preset user AQ
+preset option mskip on
 preset userloc A 47 0
 preset userloc Q 48 0
 preset gift A bomb 3
+# do not allow bomb on special node: prison/park
 bomb 2
 step 1
+n
 step 1
 dump

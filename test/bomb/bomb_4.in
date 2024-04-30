@@ -1,4 +1,5 @@
 preset user AQJ
+preset option mskip on
 preset userloc A 10 0
 preset userloc Q 12 0
 preset userloc J 8 0
@@ -7,6 +8,8 @@ bomb 2
 bomb -2
 bomb 4
 step 2
+n
 step 2
 step 5
+n
 dump
