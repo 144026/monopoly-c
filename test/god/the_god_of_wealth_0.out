@@ -1,0 +1,16 @@
+user AQ
+
+map 37 Q 0
+
+fund A 100
+fund Q 21030
+
+credit A 0
+credit Q 0
+
+userloc A 37 0
+userloc Q 39 0
+
+gift A god 4
+
+nextuser Q

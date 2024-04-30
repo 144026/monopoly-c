@@ -1,0 +1,14 @@
+user AQ
+
+map 37 Q 0
+
+fund A 6000  #6000
+fund Q 500   #500
+
+credit A 100 #A through the mine at 67
+credit Q 0
+
+userloc A 37 0
+userloc Q 12 0
+
+nextuser A

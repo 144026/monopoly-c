@@ -1,0 +1,39 @@
+preset user AQ
+
+preset map 37 Q 0
+
+preset fund A 6000
+preset fund Q 500
+
+preset credit A 0
+preset credit Q 0
+
+preset userloc A 34 0
+preset userloc Q 36 0
+
+preset nextuser A
+
+step 1 #A:34->35
+3
+step 3 #Q:36->39
+n
+step 2 #A:35->37
+step 1 #Q:39->40
+n
+step 30 #A:37->67
+step 2 #Q:40->42
+n
+step 20 #A:67->17
+n
+step 10 #Q:42->52
+n
+step 30 #A:17->47
+n
+step 20 #Q:52->2
+n
+step 60 #A:47->37
+step 10 #Q:2->12
+n
+
+dump
+
