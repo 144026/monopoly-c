@@ -439,13 +439,13 @@ static int game_prompt_item_house(struct game *game, struct player *player, stru
         choices[sel.cur_choice].chosen = 0;
 
         if (asset->n_points < chosen->price) {
-            fprintf(ui->out, "[ITEM HOUSE] Player points %d not enough, need %d to by %s.\n",
+            fprintf(ui->out, "[ITEM HOUSE] Player points %d not enough, need %d to by '%s'.\n",
                     asset->n_points, chosen->price, choices[sel.cur_choice].name);
             continue;
         }
 
         asset->n_points -= chosen->price;
-        fprintf(ui->out, "[ITEM HOUSE] Bought %s, payed %d points.\n", choices[sel.cur_choice].name, chosen->price);
+        fprintf(ui->out, "[ITEM HOUSE] Bought '%s', payed %d points.\n", choices[sel.cur_choice].name, chosen->price);
         /* FIXME: change struct asset to be be fully generic */
         if (sel.cur_choice == ITEM_BLOCK)
             asset->n_block++;
@@ -1201,7 +1201,7 @@ static void game_dump_player_item(struct ui *ui, int id_char, struct asset *asse
         fprintf(ui->err, "gift %c bomb %d\n", id_char, asset->n_bomb);
 
     if (asset->n_block)
-        fprintf(ui->err, "gift %c block %d\n", id_char, asset->n_block);
+        fprintf(ui->err, "gift %c barrier %d\n", id_char, asset->n_block);
 
     if (asset->n_robot)
         fprintf(ui->err, "gift %c robot %d\n", id_char, asset->n_robot);

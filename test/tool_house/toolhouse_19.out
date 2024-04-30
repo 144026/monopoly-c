@@ -1,0 +1,9 @@
+user AQ
+fund A 10000
+credit A 20
+userloc A 28 0
+fund Q 10000
+credit Q 10
+userloc Q 28 0
+gift Q robot 8
+nextuser Q

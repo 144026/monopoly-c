@@ -1,0 +1,17 @@
+preset user AQ
+preset credit A 500
+preset credit Q 500
+preset gift Q robot 8
+preset gift A robot 8
+preset userloc A 26 0
+preset userloc Q 25 0
+preset nextuser Q
+step 3
+2
+2
+2
+step 2
+2
+2
+2
+dump
