@@ -3,6 +3,12 @@
 #include "player.h"
 #include "ui.h"
 
+const static struct game_options default_option = {
+    .opts = {
+        [GAME_OPT_MANUAL_SKIP] = { .name = "mskip", .on = 0 },
+    }
+};
+
 static int game_init_map(struct game *game)
 {
     game->cur_layout = g_default_map_layout;
@@ -232,6 +238,7 @@ int game_init(struct game *game)
     memset(game, 0, sizeof(*game));
     game->default_money = GAME_DEFAULT_MONEY;
     game->max_sell_per_turn = GAME_MAX_SELL_PER_TURN;
+    game->option = default_option;
 
     if (ui_init(&game->ui))
         goto err;
@@ -813,12 +820,17 @@ static int game_cmd_preset_gift(struct game *game, int argc, const char *argv[])
         return -1;
 
     if (!strcmp(argv[3], "barrier")) {
-        if (player->asset.n_robot + num > PLAYER_MAX_ITEM)
+        if (num + player->asset.n_bomb + player->asset.n_robot > PLAYER_MAX_ITEM)
             return -1;
         player->asset.n_block = num;
 
+    } else if (!strcmp(argv[3], "bomb")) {
+        if (player->asset.n_block + num + player->asset.n_robot > PLAYER_MAX_ITEM)
+            return -1;
+        player->asset.n_bomb = num;
+
     } else if (!strcmp(argv[3], "robot")) {
-        if (player->asset.n_block + num > PLAYER_MAX_ITEM)
+        if (player->asset.n_block + player->asset.n_bomb + num > PLAYER_MAX_ITEM)
             return -1;
         player->asset.n_robot = num;
 
@@ -889,7 +901,7 @@ static int game_cmd_preset_nextuser(struct game *game, int argc, const char *arg
     return game_set_next_player(game, player);
 }
 
-static int game_cmd_preset_barrier(struct game *game, int argc, const char *argv[])
+static int game_cmd_preset_item(struct game *game, enum item_type type, int argc, const char *argv[])
 {
     struct map *map = &game->map;
     int pos;
@@ -905,9 +917,68 @@ static int game_cmd_preset_barrier(struct game *game, int argc, const char *argv
         return -1;
     }
 
-    return map_place_item(&game->map, pos, ITEM_BLOCK, NULL);
+    return map_place_item(&game->map, pos, type, NULL);
 }
 
+static inline int game_cmd_preset_barrier(struct game *game, int argc, const char *argv[])
+{
+    return game_cmd_preset_item(game, ITEM_BLOCK, argc, argv);
+}
+
+static inline int game_cmd_preset_bomb(struct game *game, int argc, const char *argv[])
+{
+    return game_cmd_preset_item(game, ITEM_BOMB, argc, argv);
+}
+
+static int game_cmd_preset_debug(struct game *game, int argc, const char *argv[])
+{
+    if (argc != 3) {
+        fprintf(game->ui.out, "usage: preset debug on|off\n");
+        return -1;
+    }
+    if (!strcmp(argv[2], "1") || !strcmp(argv[2], "on")) {
+        g_game_dbg = 1;
+        return 0;
+    }
+    if (!strcmp(argv[2], "0") || !strcmp(argv[2], "off")) {
+        g_game_dbg = 0;
+        return 0;
+    }
+
+    fprintf(game->ui.out, "usage: preset debug on|off\n");
+    return -1;
+}
+
+static int game_cmd_preset_option(struct game *game, int argc, const char *argv[])
+{
+    int i;
+
+    if (argc != 4) {
+        game_err("usage: preset option OPT on|off\n");
+        return -1;
+    }
+
+    for (i = 0; i < GAME_OPT_MAX; i++) {
+        if (!strcmp(argv[2], game->option.opts[i].name))
+            break;
+    }
+    if (i == GAME_OPT_MAX) {
+        game_err("unknown option %s\n", argv[2]);
+        return -1;
+    }
+
+    if (!strcmp(argv[3], "1") || !strcmp(argv[3], "on")) {
+        game->option.opts[i].on = 1;
+        return 0;
+    }
+    if (!strcmp(argv[3], "0") || !strcmp(argv[3], "off")) {
+        game->option.opts[i].on = 0;
+        return 0;
+    }
+
+    game_err("unknown option value %s\n", argv[3]);
+    return -1;
+}
 
 static int game_cmd_preset(struct game *game, int argc, const char *argv[])
 {
@@ -939,6 +1010,15 @@ static int game_cmd_preset(struct game *game, int argc, const char *argv[])
 
     } else if (!strcmp(subcmd, "barrier")) {
         return game_cmd_preset_barrier(game, argc, argv);
+
+    } else if (!strcmp(subcmd, "bomb")) {
+        return game_cmd_preset_bomb(game, argc, argv);
+
+    } else if (!strcmp(subcmd, "debug")) {
+        return game_cmd_preset_debug(game, argc, argv);
+
+    } else if (!strcmp(subcmd, "option")) {
+        return game_cmd_preset_option(game, argc, argv);
     }
     return -1;
 }
@@ -1067,8 +1147,10 @@ step_into:
             fprintf(ui->out, "[BOMB] Explosion! Transferred to nearest hospital, rest 3 rounds\n");
 
             hospital_pos = map_nearest_node_from(map, game->cur_layout, pos, MAP_NODE_HOSPITAL);
-            if (map_move_player(map, player, pos))
+            if (map_move_player(map, player, hospital_pos)) {
+                game_err("failt to move player to hospital pos %d\n", hospital_pos);
                 return -1;
+            }
             player->buff.n_empty_rounds = 3;
             return 1;
         }
@@ -1172,19 +1254,19 @@ static int game_player_place_item(struct game *game, struct player *player, enum
     if (type == ITEM_BLOCK)
         player->asset.n_block--;
     else if (type == ITEM_BOMB)
-        player->asset.n_block--;
+        player->asset.n_bomb--;
 
     return 0;
 }
 
-static int game_cmd_block(struct game *game, int argc, const char *argv[])
+static int game_cmd_place_item(struct game *game, enum item_type type, int range, int argc, const char *argv[])
 {
     struct ui *ui = &game->ui;
     int offset;
     char *endptr;
 
     if (argc != 2 || !argv[1]) {
-        fprintf(ui->out, "block command syntax error\n");
+        fprintf(ui->out, "command syntax error, expects a integer argument\n");
         return -1;
     }
 
@@ -1195,18 +1277,31 @@ static int game_cmd_block(struct game *game, int argc, const char *argv[])
         return -1;
     }
 
-    if (offset < -GAME_ITEM_BLOCK_RANGE || offset > GAME_ITEM_BLOCK_RANGE) {
-        fprintf(ui->out, "block command only allow a range of [%d, %d], got %d\n",
-                -GAME_ITEM_BLOCK_RANGE, GAME_ITEM_BLOCK_RANGE, offset);
+    range = abs(range);
+    if (offset < -range || offset > range) {
+        fprintf(ui->out, "command only allow a range of [%d, %d], got %d\n", -range, range, offset);
         return -1;
     }
 
+    return game_player_place_item(game, game->next_player, type, offset);
+}
+
+static inline int game_cmd_block(struct game *game, int argc, const char *argv[])
+{
     if (game->next_player->asset.n_block <= 0) {
-        fprintf(ui->out, "[ITEM] no '%s' item to use\n", ui_item_name(ITEM_BLOCK));
+        fprintf(game->ui.out, "[ITEM] no '%s' item to use\n", ui_item_name(ITEM_BLOCK));
         return -1;
     }
+    return game_cmd_place_item(game, ITEM_BLOCK, GAME_ITEM_BLOCK_RANGE, argc, argv);
+}
 
-    return game_player_place_item(game, game->next_player, ITEM_BLOCK, offset);
+static inline int game_cmd_bomb(struct game *game, int argc, const char *argv[])
+{
+    if (game->next_player->asset.n_bomb <= 0) {
+        fprintf(game->ui.out, "[ITEM] no '%s' item to use\n", ui_item_name(ITEM_BOMB));
+        return -1;
+    }
+    return game_cmd_place_item(game, ITEM_BOMB, GAME_ITEM_BOMB_RANGE, argc, argv);
 }
 
 static int game_cmd_robot(struct game *game, int argc, const char *argv[])
@@ -1236,6 +1331,39 @@ static int game_cmd_robot(struct game *game, int argc, const char *argv[])
     }
 
     fprintf(ui->out, "[ITEM] Used '%s', cleared %d items.\n", ui_item_name(ITEM_ROBOT), n_clear);
+    return 0;
+}
+
+static int game_cmd_query(struct game *game, int argc, const char *argv[])
+{
+    int i, pos, n_clear;
+    struct ui *ui = &game->ui;
+    struct map *map = &game->map;
+    struct player *player = game->next_player;
+    struct map_node *node;
+
+    if (argc != 1) {
+        fprintf(ui->out, "query command syntax error, use 'query' with no argument\n");
+        return -1;
+    }
+
+    fprintf(ui->out, "[QUERY] money: %d\n", player->asset.n_money);
+    fprintf(ui->out, "[QUERY] points: %d\n", player->asset.n_points);
+    fprintf(ui->out, "[QUERY] items:\n");
+    fprintf(ui->out, "[QUERY]   barrier: %d\n", player->asset.n_block);
+    fprintf(ui->out, "[QUERY]   bomb: %d\n", player->asset.n_bomb);
+    fprintf(ui->out, "[QUERY]   robot: %d\n", player->asset.n_robot);
+    fprintf(ui->out, "[QUERY] buff:\n");
+    fprintf(ui->out, "[QUERY]   god of wealth: %d (%d rounds left)\n", player->stat.god, player->buff.n_god_rounds);
+    fprintf(ui->out, "[QUERY]   empty: %d (%d rounds left)\n", player->stat.empty, player->buff.n_empty_rounds);
+
+    if (list_empty(&player->asset.estates))
+        return 0;
+
+    fprintf(ui->out, "[QUERY] estates:\n");
+    list_for_each_entry(node, &player->asset.estates, estate.estates_list) {
+        fprintf(ui->out, "[QUERY]   house #%d, level %d, value %d\n", node->idx, node->estate.level, node->estate.price);
+    }
     return 0;
 }
 
@@ -1272,6 +1400,7 @@ static void game_cmd_help(struct game *game)
     fprintf(ui->out, "  bomb N      use bomb item, N is distance from current player\n");
     fprintf(ui->out, "  robot       use robot item\n");
     fprintf(ui->out, "  query       show current player stats\n");
+    fprintf(ui->out, "  skip        skip your turn\n");
     fprintf(ui->out, "  quit        stop game and exit\n");
     fprintf(ui->out, "  help        show this help\n");
     fprintf(ui->out, "\n");
@@ -1280,8 +1409,9 @@ static void game_cmd_help(struct game *game)
 #define GAME_CMD_MAX_ARGC 16
 
 /* @return: < 0 err, == 0 good, > 0 action performed */
-static int game_handle_command(struct game *game, char *line)
+static int game_handle_command(struct game *game, char *line, int should_skip)
 {
+    struct ui *ui = &game->ui;
     int argc;
     const char *cmd;
     const char *argv[GAME_CMD_MAX_ARGC];
@@ -1293,16 +1423,25 @@ static int game_handle_command(struct game *game, char *line)
     cmd = argv[0];
     game_debug_show_cmd(argc, argv);
 
-    if (!strcmp(cmd, "quit")) {
-        game_stop(game, GAME_STOP_NODUMP);
+    if (!strcmp(cmd, "preset")) {
+        return game_cmd_preset(game, argc, argv);
+    } else if (!strcmp(cmd, "query")) {
+        return game_cmd_query(game, argc, argv);
+    } else if (!strcmp(cmd, "help")) {
+        game_cmd_help(game);
         return 0;
     } else if (!strcmp(cmd, "dump")) {
         game_stop(game, GAME_STOP_DUMP);
         return 0;
-    } else if (!strcmp(cmd, "preset")) {
-        return game_cmd_preset(game, argc, argv);
-    } else if (!strcmp(cmd, "help")) {
-        game_cmd_help(game);
+    } else if (!strcmp(cmd, "quit")) {
+        game_stop(game, GAME_STOP_NODUMP);
+        return 0;
+    } else if (!strcmp(cmd, "skip")) {
+        return 1;
+    }
+
+    if (should_skip) {
+        fprintf(ui->out, "[NOTE] manually skip option is on, use 'skip' command to continue game\n");
         return 0;
     }
 
@@ -1319,9 +1458,11 @@ static int game_handle_command(struct game *game, char *line)
     } else if (!strcmp(cmd, "sell")) {
         return game_cmd_sell(game, argc, argv);
 
-    } else if (!strcmp(cmd, "query")) {
     } else if (!strcmp(cmd, "block")) {
         return game_cmd_block(game, argc, argv);
+
+    } else if (!strcmp(cmd, "bomb")) {
+        return game_cmd_bomb(game, argc, argv);
 
     } else if (!strcmp(cmd, "robot")) {
         return game_cmd_robot(game, argc, argv);
@@ -1349,10 +1490,10 @@ static char *game_read_line(struct game *game)
 int game_event_loop(struct game *game)
 {
     int stop_reason = 0;
-    int cmd_ret;
+    int should_skip;
+    int should_rotate;
     char *line = NULL;
 
-    /* TODO: make sure on first enter, next_player is valid */
     while (game->state != GAME_STATE_STOPPED) {
 
         assert(game->state != GAME_STATE_UNINIT);
@@ -1360,7 +1501,8 @@ int game_event_loop(struct game *game)
 
         /* TODO: check winning here */
 
-        if (game_before_action(game)) {
+        should_skip = game_before_action(game);
+        if (should_skip && !game->option.opts[GAME_OPT_MANUAL_SKIP].on) {
             goto skip_action;
         }
 
@@ -1371,12 +1513,12 @@ int game_event_loop(struct game *game)
             break;
         }
 
-        cmd_ret = game_handle_command(game, line);
+        should_rotate = game_handle_command(game, line, should_skip);
 
         if (game->state == GAME_STATE_START)
             game->state = GAME_STATE_RUNNING;
 
-        if (cmd_ret <= 0)
+        if (should_rotate <= 0)
             continue;
 
 skip_action:

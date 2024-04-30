@@ -16,9 +16,25 @@ enum game_state {
     GAME_STAT_MAX,
 };
 
+enum game_option {
+    GAME_OPT_MANUAL_SKIP,
+    GAME_OPT_MAX,
+};
+
+struct game_opt {
+    /* user must type skip command manually when stat->empty == 1, added for bomb testing */
+    const char *name;
+    int on;
+};
+
+struct game_options {
+    struct game_opt opts[GAME_OPT_MAX];
+};
+
 struct game {
     enum game_state state;
     int need_dump;
+    struct game_options option;
 
     struct ui ui;
 

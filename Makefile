@@ -3,6 +3,7 @@ SRCS := $(foreach mod,$(SUBMOD),$(wildcard $(mod)/*.c))
 HEADERS := $(foreach mod,$(SUBMOD),$(wildcard $(mod)/*.h))
 
 CFLAGS := $(foreach mod,$(SUBMOD),-I$(mod))
+CFLAGS += -fcommon
 OBJS := $(foreach src,$(SRCS),$(patsubst %.c,%.o,$(src)))
 
 PROGS := monopoly

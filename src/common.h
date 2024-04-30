@@ -7,15 +7,11 @@
 #include <ctype.h>
 #include <assert.h>
 
-#ifdef GAME_DEBUG
-#define game_log(fmt, args...) fprintf(stdout, "[LOG][%s:%d] %-24s : " fmt, __FILE__, __LINE__, __FUNCTION__, ## args)
-#define game_err(fmt, args...) fprintf(stdout, "[ERR][%s:%d] %-24s : " fmt, __FILE__, __LINE__, __FUNCTION__, ## args)
-#define game_dbg(fmt, args...) fprintf(stdout, "[DBG][%s:%d] %-24s : " fmt, __FILE__, __LINE__, __FUNCTION__, ## args)
-#else
-#define game_log(fmt, args...)
-#define game_err(fmt, args...)
-#define game_dbg(fmt, args...)
-#endif
+extern int g_game_dbg;
+
+#define game_log(fmt, args...) do { if (g_game_dbg) fprintf(stdout, "[LOG][%s:%d] %-24s : " fmt, __FILE__, __LINE__, __FUNCTION__, ## args); } while (0)
+#define game_err(fmt, args...) do { if (g_game_dbg) fprintf(stdout, "[ERR][%s:%d] %-24s : " fmt, __FILE__, __LINE__, __FUNCTION__, ## args); } while (0)
+#define game_dbg(fmt, args...) do { if (g_game_dbg) fprintf(stdout, "[DBG][%s:%d] %-24s : " fmt, __FILE__, __LINE__, __FUNCTION__, ## args); } while (0)
 
 struct range {
     long begin;

@@ -2,6 +2,12 @@
 #include "game.h"
 #include "ui.h"
 
+#ifdef GAME_DEBUG
+int g_game_dbg = 1;
+#else
+int g_game_dbg = 0;
+#endif
+
 static struct game g_game;
 
 int main(void)
