@@ -28,6 +28,8 @@ const char *ui_item_name(enum item_type type);
 void ui_map_render(struct ui *ui, struct map *map);
 
 void ui_prompt_player_name(struct ui *ui, struct player *player);
+int ui_dump_player_stats(struct ui *ui, const char *prompt, struct player *player);
+
 char *ui_read_line(struct ui *ui);
 int ui_cmd_tokenize(char *cmd, const char *argv[], int n);
 

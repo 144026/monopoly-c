@@ -450,3 +450,27 @@ const char *ui_item_name(enum item_type type)
 
     return item_ui_name[type];
 }
+
+int ui_dump_player_stats(struct ui *ui, const char *prompt, struct player *player)
+{
+    struct map_node *node;
+
+    fprintf(ui->out, "[%s] money: %d\n", prompt, player->asset.n_money);
+    fprintf(ui->out, "[%s] points: %d\n", prompt, player->asset.n_points);
+    fprintf(ui->out, "[%s] items:\n", prompt);
+    fprintf(ui->out, "[%s]   barrier: %d\n", prompt, player->asset.n_block);
+    fprintf(ui->out, "[%s]   bomb: %d\n", prompt, player->asset.n_bomb);
+    fprintf(ui->out, "[%s]   robot: %d\n", prompt, player->asset.n_robot);
+    fprintf(ui->out, "[%s] buff:\n", prompt);
+    fprintf(ui->out, "[%s]   god of wealth: %d (%d rounds left)\n", prompt, player->stat.god, player->buff.n_god_rounds);
+    fprintf(ui->out, "[%s]   empty: %d (%d rounds left)\n", prompt, player->stat.empty, player->buff.n_empty_rounds);
+
+    if (list_empty(&player->asset.estates))
+        return 0;
+
+    fprintf(ui->out, "[%s] estates:\n", prompt);
+    list_for_each_entry(node, &player->asset.estates, estate.estates_list) {
+        fprintf(ui->out, "[%s]   house #%d, level %d, value %d\n", prompt, node->idx, node->estate.level, node->estate.price);
+    }
+    return 0;
+}

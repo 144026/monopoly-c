@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include "common.h"
 #include "game.h"
 #include "player.h"
@@ -200,10 +201,11 @@ int game_del_all_players(struct game *game)
     while (n-- > 0) {
         struct player *player = game->cur_players[n];
 
-        ret = map_detach_player(&game->map, player);
-        if (ret)
-            game_err("fail to detach player %d, ret %d\n", n, ret);
-
+        if (player->attached) {
+            ret = map_detach_player(&game->map, player);
+            if (ret)
+                game_err("fail to detach player %d, ret %d\n", n, ret);
+        }
         ret = game_del_player(game, player->idx);
         if (ret)
             game_err("fail to free player %d, ret %d\n", n, ret);
@@ -281,6 +283,26 @@ static int game_prompt_action(struct game *game)
     return 0;
 }
 
+static int game_check_finish(struct game *game)
+{
+    if (game->bankrupt_nr + 1 < game->cur_player_nr)
+        return 0;
+
+    fprintf(game->ui.out, "Congratulations! Player %s has won!\n", game->next_player->name);
+    ui_dump_player_stats(&game->ui, "STAT", game->next_player);
+
+    /* restart game */
+    sleep(2);
+    game_stop(game, GAME_STOP_NODUMP);
+    game_uninit(game);
+
+    if (game_init(game)) {
+        game_err("restart game init fail\n");
+        return -1;
+    }
+    return 1;
+}
+
 int game_before_action(struct game *game)
 {
     struct player *player = game->next_player;
@@ -292,6 +314,9 @@ int game_before_action(struct game *game)
 
     if (player->stat.bankrupt || !player->attached)
         return 1;
+
+    if (game_check_finish(game))
+        return 0;
 
     player_buff_apply(player);
 
@@ -640,6 +665,8 @@ static int game_player_after_action(struct game *game)
             node->estate.owner = NULL;
             list_del_init(&node->estate.estates_list);
         }
+
+        game->bankrupt_nr++;
         return 0;
     }
 
@@ -650,10 +677,14 @@ static int game_player_after_action(struct game *game)
 
 int game_after_action(struct game *game)
 {
+    struct player *player = game->next_player;
+
     if (game->state != GAME_STATE_RUNNING)
         return 0;
 
-    if (!game->next_player || game->next_player->stat.bankrupt)
+    if (!player)
+        return 0;
+    if (player->stat.bankrupt || !player->attached)
         return 0;
 
     if (!game->next_player->stat.empty)
@@ -718,7 +749,7 @@ static int game_cmd_preset_user(struct game *game, int argc, const char *argv[])
         return -3;
     }
 
-    game->state = GAME_STATE_START;
+    game->state = GAME_STATE_STARTING;
     return 0;
 }
 
@@ -1108,7 +1139,7 @@ static int game_cmd_start(struct game *game)
         goto out_stop;
     }
 
-    game->state = GAME_STATE_START;
+    game->state = GAME_STATE_STARTING;
     return 0;
 
 out_stop:
@@ -1356,33 +1387,13 @@ static int game_cmd_query(struct game *game, int argc, const char *argv[])
 {
     int i, pos, n_clear;
     struct ui *ui = &game->ui;
-    struct map *map = &game->map;
     struct player *player = game->next_player;
-    struct map_node *node;
 
     if (argc != 1) {
         fprintf(ui->out, "query command syntax error, use 'query' with no argument\n");
         return -1;
     }
-
-    fprintf(ui->out, "[QUERY] money: %d\n", player->asset.n_money);
-    fprintf(ui->out, "[QUERY] points: %d\n", player->asset.n_points);
-    fprintf(ui->out, "[QUERY] items:\n");
-    fprintf(ui->out, "[QUERY]   barrier: %d\n", player->asset.n_block);
-    fprintf(ui->out, "[QUERY]   bomb: %d\n", player->asset.n_bomb);
-    fprintf(ui->out, "[QUERY]   robot: %d\n", player->asset.n_robot);
-    fprintf(ui->out, "[QUERY] buff:\n");
-    fprintf(ui->out, "[QUERY]   god of wealth: %d (%d rounds left)\n", player->stat.god, player->buff.n_god_rounds);
-    fprintf(ui->out, "[QUERY]   empty: %d (%d rounds left)\n", player->stat.empty, player->buff.n_empty_rounds);
-
-    if (list_empty(&player->asset.estates))
-        return 0;
-
-    fprintf(ui->out, "[QUERY] estates:\n");
-    list_for_each_entry(node, &player->asset.estates, estate.estates_list) {
-        fprintf(ui->out, "[QUERY]   house #%d, level %d, value %d\n", node->idx, node->estate.level, node->estate.price);
-    }
-    return 0;
+    return ui_dump_player_stats(ui, "QUERY", player);
 }
 
 static int game_cmd_step(struct game *game, int argc, const char *argv[])
@@ -1434,6 +1445,9 @@ static int game_handle_command(struct game *game, char *line, int should_skip)
     const char *cmd;
     const char *argv[GAME_CMD_MAX_ARGC];
 
+    /* starting state should not be visible */
+    assert(game->state != GAME_STATE_STARTING);
+
     argc = ui_cmd_tokenize(line, argv, GAME_CMD_MAX_ARGC);
     if (argc <= 0)
         return -1;
@@ -1463,7 +1477,7 @@ static int game_handle_command(struct game *game, char *line, int should_skip)
         return 0;
     }
 
-    if (game->state != GAME_STATE_RUNNING) {
+    if (game->state == GAME_STATE_INIT) {
         if (!strcmp(cmd, "start"))
             return game_cmd_start(game);
         return -1;
@@ -1513,11 +1527,12 @@ int game_event_loop(struct game *game)
     char *line = NULL;
 
     while (game->state != GAME_STATE_STOPPED) {
+        if (game->state == GAME_STATE_UNINIT) {
+            game_err("fail to restart game, exit\n");
+            stop_reason = 3;
+        }
 
-        assert(game->state != GAME_STATE_UNINIT);
         ui_map_render(&game->ui, &game->map);
-
-        /* TODO: check winning here */
 
         should_skip = game_before_action(game);
         if (should_skip && !game->option.opts[GAME_OPT_MANUAL_SKIP].on) {
@@ -1532,13 +1547,11 @@ int game_event_loop(struct game *game)
         }
 
         should_rotate = game_handle_command(game, line, should_skip);
-
-        if (game->state == GAME_STATE_START)
+        if (game->state == GAME_STATE_STARTING)
             game->state = GAME_STATE_RUNNING;
 
         if (should_rotate <= 0)
             continue;
-
 skip_action:
         game_after_action(game);
 

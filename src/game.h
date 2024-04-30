@@ -9,7 +9,7 @@ enum game_state {
     /* resource allocated, minial prompt */
     GAME_STATE_INIT,
     /* intermidate state, invisible to player/effects */
-    GAME_STATE_START,
+    GAME_STATE_STARTING,
     GAME_STATE_RUNNING,
     /* freeze game, keep all states */
     GAME_STATE_STOPPED,
@@ -48,6 +48,9 @@ struct game {
 
     int cur_player_nr;
     struct player *cur_players[PLAYER_MAX];
+
+    /* only valid in game running state */
+    int bankrupt_nr;
 
     int next_player_seq;
     struct player *next_player;
