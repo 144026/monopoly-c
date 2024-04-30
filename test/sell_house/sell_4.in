@@ -1,0 +1,17 @@
+preset user AQS       # 3 users AQS play in order
+preset map 33 A 0      # S has an empty property at Map Block
+preset map 60 S 0     # S has an empty property at Map Block 60
+preset fund A 20480
+preset fund Q 5000
+preset fund S 100
+
+preset userloc A 14 0  # A is at Hospital(14) but dose not stay
+preset userloc S 26 0  # Q is at 26,near the tool house
+
+preset nextuser Q    # next interactive player is S
+
+step 2  #Q
+n
+sell 4  #S
+
+dump
