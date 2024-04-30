@@ -32,7 +32,6 @@ $(call cmd_run_$(1),$(2))
 $(call cmd_$(1)_$(quiet),$(2))
 endef
 
-_default: debug
 
 all: CFLAGS += -g -O2
 all: $(PROGS)
@@ -50,11 +49,11 @@ monopoly: $(OBJS)
 $(OBJS): %.o: %.c $(HEADERS) Makefile
 	$(call cmd,cc)
 
-test: _default
+test: all
 	@python3 test/autotest.py -d test -n monopoly
 
 clean:
 	$(call cmd,rm,$(OBJS))
 	$(call cmd,rm,$(PROGS))
 
-.PHONY: _default all debug test clean
+.PHONY: all debug test clean
