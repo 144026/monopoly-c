@@ -190,15 +190,17 @@ int player_buff_wearoff(struct player *player)
     if (stat->god) {
         if (buff->n_god_rounds > 0)
             buff->n_god_rounds--;
-        else
-            stat->god = 0;;
+
+        if (buff->n_god_rounds == 0)
+            stat->god = 0;
     }
 
     if (stat->empty) {
         if (buff->n_empty_rounds > 0)
             buff->n_empty_rounds--;
-        else
-            stat->empty = 0;;
+
+        if (buff->n_empty_rounds == 0)
+            stat->empty = 0;
     }
 
     game_dbg("player %s god %d empty %d\n", player->name, buff->n_god_rounds, buff->n_empty_rounds);

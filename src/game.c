@@ -1015,7 +1015,7 @@ static int game_cmd_sell(struct game *game, int argc, const char *argv[])
     char *endptr;
 
     if (argc != 2 || !argv[1]) {
-        fprintf(ui->out, "step command syntax error\n");
+        fprintf(ui->out, "sell command syntax error\n");
         return -1;
     }
 
@@ -1055,6 +1055,78 @@ static int game_cmd_sell(struct game *game, int argc, const char *argv[])
 
     fprintf(ui->out, "[SELL] Sold map %d estate at price %d.\n", idx, sold);
     return 0;
+}
+
+
+static int game_player_place_item(struct game *game, struct player *player, enum item_type type, int offset)
+{
+    struct ui *ui = &game->ui;
+    struct map *map = &game->map;
+    struct map_node *node;
+    int pos;
+
+    if (offset > 0)
+        pos = (player->pos + offset) % map->n_used;
+    else
+        pos = (player->pos + offset + map->n_used) % map->n_used;
+
+    node = &map->nodes[pos];
+    if (node->type != MAP_NODE_VACANCY) {
+        fprintf(ui->out, "[ITEM] '%s' not alllowed at special map pos %d (type %d).\n", ui_item_name(type), pos, node->type);
+        return -1;
+    }
+    if (!list_empty(&node->players)) {
+        fprintf(ui->out, "[ITEM] '%s' not alllowed on players.\n", ui_item_name(type));
+        return -1;
+    }
+    if (node->item != ITEM_INVALID) {
+        fprintf(ui->out, "[ITEM] Map pos %d already has item '%s', new item can't be placed.\n", pos, ui_item_name(node->item));
+        return -1;
+    }
+
+    if (map_place_item(map, pos, type, player)) {
+        game_err("fail to place item type %d at map pos %d\n", type, pos);
+        return -1;
+    }
+
+    if (type == ITEM_BLOCK)
+        player->asset.n_block--;
+    else if (type == ITEM_BOMB)
+        player->asset.n_block--;
+
+    return 0;
+}
+
+static int game_cmd_block(struct game *game, int argc, const char *argv[])
+{
+    struct ui *ui = &game->ui;
+    int offset;
+    char *endptr;
+
+    if (argc != 2 || !argv[1]) {
+        fprintf(ui->out, "block command syntax error\n");
+        return -1;
+    }
+
+    endptr = NULL;
+    offset = strtol(argv[1], &endptr, 10);
+    if (*endptr) {
+        fprintf(ui->out, "not a valid number: %s\n", argv[1]);
+        return -1;
+    }
+
+    if (offset < -GAME_PLAYER_ITEM_RANGE || offset > GAME_PLAYER_ITEM_RANGE) {
+        fprintf(ui->out, "block command only allow a range of [%d, %d], got %d\n",
+                -GAME_PLAYER_ITEM_RANGE, GAME_PLAYER_ITEM_RANGE, offset);
+        return -1;
+    }
+
+    if (game->next_player->asset.n_block <= 0) {
+        fprintf(ui->out, "no '%s' item to use\n", ui_item_name(ITEM_BLOCK));
+        return -1;
+    }
+
+    return game_player_place_item(game, game->next_player, ITEM_BLOCK, offset);
 }
 
 static int game_cmd_step(struct game *game, int argc, const char *argv[])
@@ -1139,6 +1211,8 @@ static int game_handle_command(struct game *game, char *line)
 
     } else if (!strcmp(cmd, "query")) {
     } else if (!strcmp(cmd, "block")) {
+        return game_cmd_block(game, argc, argv);
+
     } else if (!strcmp(cmd, "robot")) {
     } else if (!strcmp(cmd, "step")) {
         return game_cmd_step(game, argc, argv);

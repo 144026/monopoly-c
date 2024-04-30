@@ -351,19 +351,6 @@ int map_place_item(struct map *map, int pos, enum item_type item, struct player 
         return -1;
 
     node = &map->nodes[pos];
-    if (node->type != MAP_NODE_VACANCY) {
-        game_err("map pos %d type %d, item %d not allowed\n", pos, node->type, item);
-        return -1;
-    }
-    if (!list_empty(&node->players)) {
-        game_err("map pos %d has players, item %d not allowed\n", pos, item);
-        return -1;
-    }
-    if (node->item != ITEM_INVALID) {
-        game_err("map pos %d already has item %d, item %d not allowed\n", pos, node->item, item);
-        return -1;
-    }
-
     node->item = item;
     if (owner)
         node->item_owner = owner;

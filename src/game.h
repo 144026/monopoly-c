@@ -48,6 +48,8 @@ struct game {
 
 #define GAME_MAX_SELL_PER_TURN 1
 
+#define GAME_PLAYER_ITEM_RANGE 10
+
 /* raw player creation/deletion, unattached */
 int game_add_player(struct game *game, int idx);
 int game_del_player(struct game *game, int idx);
