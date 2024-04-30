@@ -1195,18 +1195,48 @@ static int game_cmd_block(struct game *game, int argc, const char *argv[])
         return -1;
     }
 
-    if (offset < -GAME_PLAYER_ITEM_RANGE || offset > GAME_PLAYER_ITEM_RANGE) {
+    if (offset < -GAME_ITEM_BLOCK_RANGE || offset > GAME_ITEM_BLOCK_RANGE) {
         fprintf(ui->out, "block command only allow a range of [%d, %d], got %d\n",
-                -GAME_PLAYER_ITEM_RANGE, GAME_PLAYER_ITEM_RANGE, offset);
+                -GAME_ITEM_BLOCK_RANGE, GAME_ITEM_BLOCK_RANGE, offset);
         return -1;
     }
 
     if (game->next_player->asset.n_block <= 0) {
-        fprintf(ui->out, "no '%s' item to use\n", ui_item_name(ITEM_BLOCK));
+        fprintf(ui->out, "[ITEM] no '%s' item to use\n", ui_item_name(ITEM_BLOCK));
         return -1;
     }
 
     return game_player_place_item(game, game->next_player, ITEM_BLOCK, offset);
+}
+
+static int game_cmd_robot(struct game *game, int argc, const char *argv[])
+{
+    int i, pos, n_clear;
+    struct ui *ui = &game->ui;
+    struct map *map = &game->map;
+    struct player *player = game->next_player;
+
+    if (argc != 1) {
+        fprintf(ui->out, "robot command syntax error, use 'robot' with no argument\n");
+        return -1;
+    }
+
+    if (player->asset.n_robot <= 0) {
+        fprintf(ui->out, "[ITEM] no '%s' item to use\n", ui_item_name(ITEM_ROBOT));
+        return -1;
+    }
+    player->asset.n_robot--;
+
+    /* skip clear player node */
+    for (i = 1, n_clear = 0; i < GAME_ITEM_ROBOT_RANGE; i++) {
+        pos = (player->pos + i) % map->n_used;
+        if (map->nodes[pos].item != ITEM_INVALID)
+            n_clear++;
+        map->nodes[pos].item = ITEM_INVALID;
+    }
+
+    fprintf(ui->out, "[ITEM] Used '%s', cleared %d items.\n", ui_item_name(ITEM_ROBOT), n_clear);
+    return 0;
 }
 
 static int game_cmd_step(struct game *game, int argc, const char *argv[])
@@ -1294,6 +1324,8 @@ static int game_handle_command(struct game *game, char *line)
         return game_cmd_block(game, argc, argv);
 
     } else if (!strcmp(cmd, "robot")) {
+        return game_cmd_robot(game, argc, argv);
+
     } else if (!strcmp(cmd, "step")) {
         return game_cmd_step(game, argc, argv);
     }
