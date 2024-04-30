@@ -275,19 +275,16 @@ static int game_prompt_action(struct game *game)
 
 int game_before_action(struct game *game)
 {
-    int skip = 0;
     struct player *player = game->next_player;
 
     if (game->state != GAME_STATE_RUNNING)
         return 0;
 
-    if (player->buff.n_empty_rounds)
-        skip = 1;
+    player_buff_apply(player);
 
-    if (game->next_player)
-        player_buff_countdown(player);
-
-    return skip;
+    if (player->stat.empty)
+        return 1;
+    return 0;
 }
 
 static int game_prompt_buy(struct game *game, struct player *player, struct map_node *node)
@@ -369,7 +366,7 @@ static int game_player_pay_toll(struct game *game, struct player *player, struct
     assert(node->type == MAP_NODE_VACANCY);
 
     fprintf(ui->out, "[TOLL] Need to pay %d.\n", price);
-    if (player->buff.n_god_buff > 0) {
+    if (player->stat.god) {
         fprintf(ui->out, "[GOD] God of wealth helped you out.\n");
         return 0;
     }
@@ -561,6 +558,7 @@ static int game_player_after_action(struct game *game)
     struct player *player = game->next_player;
 
     player->stat.n_sell_done = 0;
+    player_buff_wearoff(game->next_player);
     return 0;
 }
 
@@ -745,7 +743,7 @@ static int game_cmd_preset_gift(struct game *game, int argc, const char *argv[])
         player->asset.n_robot = num;
 
     } else if (!strcmp(argv[3], "god"))  {
-        player->buff.n_god_buff = num;
+        player->buff.n_god_rounds = num;
     } else {
         return -1;
     }
@@ -1260,8 +1258,8 @@ static void game_dump_player(struct ui *ui, struct player *player)
     fprintf(ui->err, "userloc %c %d %d\n", id_char, player->pos, player->buff.n_empty_rounds);
 
     game_dump_player_item(ui, id_char, &player->asset);
-    if (player->buff.n_god_buff)
-        fprintf(ui->err, "gift %c god %d\n", id_char, player->buff.n_god_buff);
+    if (player->buff.n_god_rounds)
+        fprintf(ui->err, "gift %c god %d\n", id_char, player->buff.n_god_rounds);
 }
 
 void game_dump(struct game *game)

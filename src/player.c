@@ -168,15 +168,40 @@ int player_uninit (struct player *player)
     return player_del_name(player);
 }
 
-int player_buff_countdown(struct player *player)
+int player_buff_apply(struct player *player)
 {
     struct buff *buff = &player->buff;
+    struct stat *stat = &player->stat;
 
-    if (buff->n_god_buff > 0)
-        buff->n_god_buff--;
+    if (buff->n_god_rounds)
+        stat->god = 1;
 
-    if (buff->n_empty_rounds > 0)
-        buff->n_empty_rounds--;
+    if (buff->n_empty_rounds)
+        stat->empty = 1;
+
+    return 0;
+}
+
+int player_buff_wearoff(struct player *player)
+{
+    struct buff *buff = &player->buff;
+    struct stat *stat = &player->stat;
+
+    if (stat->god) {
+        if (buff->n_god_rounds > 0)
+            buff->n_god_rounds--;
+        else
+            stat->god = 0;;
+    }
+
+    if (stat->empty) {
+        if (buff->n_empty_rounds > 0)
+            buff->n_empty_rounds--;
+        else
+            stat->empty = 0;;
+    }
+
+    game_dbg("player %s god %d empty %d\n", player->name, buff->n_god_rounds, buff->n_empty_rounds);
     return 0;
 }
 
@@ -202,7 +227,7 @@ int player_grant_gift_god(struct gift_info *gift, struct game *game, struct play
 {
     struct ui *ui = &game->ui;
 
-    player->buff.n_god_buff += gift->value;
+    player->buff.n_god_rounds += gift->value;
     fprintf(ui->out, "[GIFT] God of Wealth be with you in %d rounds.\n", gift->value);
     return 0;
 }

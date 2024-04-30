@@ -27,11 +27,13 @@ struct asset {
 
 struct buff {
     int n_empty_rounds;
-    int n_god_buff;
+    int n_god_rounds;
 };
 
 struct stat {
     int n_sell_done;
+    int empty;
+    int god;
 };
 
 #define PLAYER_NAME_SZ 32
@@ -81,5 +83,5 @@ int player_grant_gift_money(struct gift_info *gift, struct game *game, struct pl
 int player_grant_gift_point(struct gift_info *gift, struct game *game, struct player *player);
 int player_grant_gift_god(struct gift_info *gift, struct game *game, struct player *player);
 
-int player_buff_countdown(struct player *player);
-
+int player_buff_apply(struct player *player);
+int player_buff_wearoff(struct player *player);
