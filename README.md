@@ -14,7 +14,7 @@ make
 
 ## Debug
 
-Upon game start, enter command `preset debug on` to toggle debugging output.
+Upon game start, enter command `preset option debug on` to toggle debugging output.
 
 Or build debug target to enable debugging messages by default:
 
