@@ -1,0 +1,18 @@
+preset user AQS
+
+preset fund A 10
+preset fund Q 10
+preset fund S 200
+
+preset map 6 Q 0
+preset userloc Q 62 0
+
+preset nextuser A
+step 6 #A bankrupt
+step 1 #Q at magic house
+2 #A
+2 #A
+3 #S
+step 2 #Q:63->65
+
+dump

@@ -124,7 +124,7 @@ again:
         game_err("current player list corrupted\n");
         return -3;
     }
-    if (!player->attached) {
+    if (!player->attached || player->stat.bankrupt) {
         dead += 1;
         goto again;
     }
@@ -279,6 +279,11 @@ int game_before_action(struct game *game)
 
     if (game->state != GAME_STATE_RUNNING)
         return 0;
+    if (!player)
+        return 0;
+
+    if (player->stat.bankrupt || !player->attached)
+        return 1;
 
     player_buff_apply(player);
 
@@ -612,14 +617,33 @@ static int game_player_after_action(struct game *game)
     struct map *map = &game->map;
     struct player *player = game->next_player;
 
+    if (player->asset.n_money < 0) {
+        struct list_head *p, *n;
+
+        player->stat.bankrupt = 1;
+        map_detach_player(map, player);
+
+        list_for_each_safe(p, n, &player->asset.estates) {
+            struct map_node *node = list_entry(p, struct map_node, estate.estates_list);
+            assert(node->type == MAP_NODE_VACANCY);
+            node->estate.level = ESTATE_WASTELAND;
+            node->estate.owner = NULL;
+            list_del_init(&node->estate.estates_list);
+        }
+        return 0;
+    }
+
     player->stat.n_sell_done = 0;
-    player_buff_wearoff(game->next_player);
+    player_buff_wearoff(player);
     return 0;
 }
 
 int game_after_action(struct game *game)
 {
     if (game->state != GAME_STATE_RUNNING)
+        return 0;
+
+    if (!game->next_player || game->next_player->stat.bankrupt)
         return 0;
 
     if (!game->next_player->stat.empty)
@@ -1363,7 +1387,11 @@ static void game_dump_player_asset(struct ui *ui, int id_char, struct asset *ass
     list_for_each_entry(node, &asset->estates, estate.estates_list) {
         fprintf(ui->err, "map %d %c %d\n", node->idx, id_char, node->estate.level);
     }
-    fprintf(ui->err, "fund %c %d\n", id_char, asset->n_money);
+    /* test case expects -1 rather than exact debt */
+    if (asset->n_money < 0)
+        fprintf(ui->err, "fund %c %d\n", id_char, -1);
+    else
+        fprintf(ui->err, "fund %c %d\n", id_char, asset->n_money);
     fprintf(ui->err, "credit %c %d\n", id_char, asset->n_points);
 }
 

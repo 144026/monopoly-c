@@ -17,7 +17,6 @@ enum player_color {
 struct asset {
     int n_money;
     int n_points;
-    int n_estate;
     struct list_head estates;
 
     int n_block;
@@ -34,6 +33,7 @@ struct stat {
     int n_sell_done;
     int empty;
     int god;
+    int bankrupt;
 };
 
 #define PLAYER_NAME_SZ 32

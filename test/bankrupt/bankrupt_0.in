@@ -1,0 +1,9 @@
+preset user AQS
+
+preset map 2 A 1
+preset map 5 Q 0
+preset fund A 50
+preset fund Q 100
+
+step 5 #A
+dump

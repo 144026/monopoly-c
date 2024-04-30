@@ -74,6 +74,9 @@ static inline void list_move_tail(struct list_head *node, struct list_head *head
 #define list_for_each(node, head) \
     for (node = (head)->next; node != (head); node = node->next)
 
+#define list_for_each_safe(node, n, head) \
+    for (node = (head)->next, n = node->next; node != (head); node = n, n = node->next)
+
 #define list_for_each_entry(container, head, field) \
     for (container = list_entry((head)->next, typeof(*container), field); \
         &container->field != (head); \
