@@ -20,6 +20,14 @@ const struct map_layout g_default_map_layout_v1 = {
     .pos_prison = {PRISON_POS},
     .pos_magic_house = {MAGIC_HOUSE_POS},
 
+    .items = {
+        .info = {
+            {.type = ITEM_BLOCK, .on_sell = 1, .price = 50},
+            {.type = ITEM_BOMB,  .on_sell = 0, .price = 0},
+            {.type = ITEM_ROBOT, .on_sell = 1, .price = 30},
+        }
+    },
+
     .n_area = 3,
     .areas = {
         {START_POS, ITEM_HOUSE_POS, AREA_1_PRICE},
@@ -29,7 +37,7 @@ const struct map_layout g_default_map_layout_v1 = {
 
     .n_mine = 6,
     .pos_mine = {64, 65, 66, 67, 68, 69},
-    .points_mine = {60, 80, 40, 100, 80, 30},
+    .points_mine = {60, 80, 40, 100, 80, 20},
 };
 
 const struct map_layout g_default_map_layout_v2 = {
@@ -52,6 +60,14 @@ const struct map_layout g_default_map_layout_v2 = {
     .pos_park = {PRISON_POS},
     .pos_magic_house = {MAGIC_HOUSE_POS},
 
+    .items = {
+        .info = {
+            {.type = ITEM_BLOCK, .on_sell = 1, .price = 50},
+            {.type = ITEM_BOMB,  .on_sell = 0, .price = 0},
+            {.type = ITEM_ROBOT, .on_sell = 1, .price = 30},
+        }
+    },
+
     .n_area = 3,
     .areas = {
         {START_POS, ITEM_HOUSE_POS, AREA_1_PRICE},
@@ -61,7 +77,7 @@ const struct map_layout g_default_map_layout_v2 = {
 
     .n_mine = 6,
     .pos_mine = {64, 65, 66, 67, 68, 69},
-    .points_mine = {60, 80, 40, 100, 80, 30},
+    .points_mine = {60, 80, 40, 100, 80, 20},
 };
 
 const struct map_layout *g_default_map_layout = &g_default_map_layout_v2;
@@ -92,25 +108,45 @@ void map_free(struct map *map)
     }
 }
 
-static void map_node_init(struct map_node *node, int idx, enum node_type type, int v)
+static void map_node_init(struct map_node *node, int idx, enum node_type type, const void *priv)
 {
-    memset(node, 0, sizeof(*node));
+    int i;
 
+    memset(node, 0, sizeof(*node));
     node->idx = idx;
     node->type = type;
-
-    node->level = ESTATE_INVALID;
-    node->owner = NULL;
-    INIT_LIST_HEAD(&node->estates_list);
-
     INIT_LIST_HEAD(&node->players);
     node->item = ITEM_INVALID;
     node->item_owner = NULL;
-    if (type == MAP_NODE_VACANCY) {
-        node->price = v;
-        node->level = ESTATE_WASTELAND;
+
+    if (type == MAP_NODE_INVALID) {
+        return;
+    } else if (type == MAP_NODE_VACANCY) {
+        const int *price = priv;
+        node->estate.price = *price;
+        node->estate.level = ESTATE_WASTELAND;
+        node->estate.owner = NULL;
+        INIT_LIST_HEAD(&node->estate.estates_list);
+
+    } else if (type == MAP_NODE_ITEM_HOUSE) {
+        const struct items_list *items = priv;
+        node->item_house.min_price = -1;
+        for (i = 0; i < ITEM_MAX; i++) {
+            if (!items->info[i].on_sell)
+                continue;
+            node->item_house.n_on_sell++;
+            if (node->item_house.min_price < 0 || node->item_house.min_price > items->info[i].price)
+                node->item_house.min_price = items->info[i].price;
+        }
+        memcpy(&node->item_house.items, items, sizeof(node->item_house.items));
+
+    } else if (type == MAP_NODE_GIFT_HOUSE) {
+    } else if (type == MAP_NODE_MAGIC_HOUSE) {
+    } else if (type == MAP_NODE_HOSPITAL) {
+    } else if (type == MAP_NODE_PRISON) {
     } else if (type == MAP_NODE_MINE) {
-        node->points = v;
+        node->mine_points = *(int *) priv;
+    } else if (type == MAP_NODE_PARK) {
     }
 }
 
@@ -142,42 +178,42 @@ static int map_fill_layout(struct map *map, const struct map_layout *layout)
     map->height = 2 + (layout->map_size - layout->map_width * 2) / 2;
 
     for (i = 0; i < map->n_node; i++) {
-        map_node_init(&map->nodes[i], i, MAP_NODE_INVALID, 0);
+        map_node_init(&map->nodes[i], i, MAP_NODE_INVALID, NULL);
     }
 
     /* init special */
     for (i = 0; i < MAP_MAX_SPECIAL && i < layout->n_start; i++) {
         pos = layout->pos_start[i];
-        map_node_init(&map->nodes[pos], pos, MAP_NODE_START, 0);
+        map_node_init(&map->nodes[pos], pos, MAP_NODE_START, NULL);
     }
     for (i = 0; i < MAP_MAX_SPECIAL && i < layout->n_hospital; i++) {
         pos = layout->pos_hospital[i];
-        map_node_init(&map->nodes[pos], pos, MAP_NODE_HOSPITAL, 0);
+        map_node_init(&map->nodes[pos], pos, MAP_NODE_HOSPITAL, NULL);
     }
     for (i = 0; i < MAP_MAX_SPECIAL && i < layout->n_item_house; i++) {
         pos = layout->pos_item_house[i];
-        map_node_init(&map->nodes[pos], pos, MAP_NODE_ITEM_HOUSE, 0);
+        map_node_init(&map->nodes[pos], pos, MAP_NODE_ITEM_HOUSE, &layout->items);
     }
     for (i = 0; i < MAP_MAX_SPECIAL && i < layout->n_gift_house; i++) {
         pos = layout->pos_gift_house[i];
-        map_node_init(&map->nodes[pos], pos, MAP_NODE_GIFT_HOUSE, 0);
+        map_node_init(&map->nodes[pos], pos, MAP_NODE_GIFT_HOUSE, NULL);
     }
     for (i = 0; i < MAP_MAX_SPECIAL && i < layout->n_prison; i++) {
         pos = layout->pos_prison[i];
-        map_node_init(&map->nodes[pos], pos, MAP_NODE_PRISON, 0);
+        map_node_init(&map->nodes[pos], pos, MAP_NODE_PRISON, NULL);
     }
     for (i = 0; i < MAP_MAX_SPECIAL && i < layout->n_park; i++) {
         pos = layout->pos_park[i];
-        map_node_init(&map->nodes[pos], pos, MAP_NODE_PARK, 0);
+        map_node_init(&map->nodes[pos], pos, MAP_NODE_PARK, NULL);
     }
     for (i = 0; i < MAP_MAX_SPECIAL && i < layout->n_magic_house; i++) {
         pos = layout->pos_magic_house[i];
-        map_node_init(&map->nodes[pos], pos, MAP_NODE_MAGIC_HOUSE, 0);
+        map_node_init(&map->nodes[pos], pos, MAP_NODE_MAGIC_HOUSE, NULL);
     }
 
     for (i = 0; i < MAP_MAX_SPECIAL && i < layout->n_mine; i++) {
         pos = layout->pos_mine[i];
-        map_node_init(&map->nodes[pos], pos, MAP_NODE_MINE, layout->points_mine[i]);
+        map_node_init(&map->nodes[pos], pos, MAP_NODE_MINE, &layout->points_mine[i]);
     }
 
     /* init area */
@@ -187,7 +223,7 @@ static int map_fill_layout(struct map *map, const struct map_layout *layout)
         for (pos = area->pos_start; pos < area->pos_end; pos++) {
             if (map->nodes[pos].type != MAP_NODE_INVALID)
                 continue;
-            map_node_init(&map->nodes[pos], pos, MAP_NODE_VACANCY, area->price);
+            map_node_init(&map->nodes[pos], pos, MAP_NODE_VACANCY, &area->price);
         }
     }
 
@@ -339,14 +375,14 @@ int map_set_owner(struct map *map, int pos, struct player *owner)
         return -1;
     }
 
-    if (node->owner && node->owner != owner) {
-        game_err("map pos %d alreadly owned by other player %d\n", pos, node->owner->idx);
+    if (node->estate.owner && node->estate.owner != owner) {
+        game_err("map pos %d alreadly owned by other player %d\n", pos, node->estate.owner->idx);
         return -1;
     }
 
-    if (owner != node->owner) {
-        node->owner = owner;
-        list_add_tail(&node->estates_list, &owner->asset.estates);
+    if (owner != node->estate.owner) {
+        node->estate.owner = owner;
+        list_add_tail(&node->estate.estates_list, &owner->asset.estates);
     }
     return 0;
 }
@@ -387,6 +423,6 @@ int map_node_price(struct map_node *node)
     if (node->type != MAP_NODE_VACANCY)
         return 0;
 
-    return node->price * (1 + node->level);
+    return node->estate.price * (1 + node->estate.level);
 }
 

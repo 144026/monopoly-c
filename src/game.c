@@ -231,6 +231,7 @@ int game_init(struct game *game)
 {
     memset(game, 0, sizeof(*game));
     game->default_money = GAME_DEFAULT_MONEY;
+    game->max_sell_per_turn = GAME_MAX_SELL_PER_TURN;
 
     if (ui_init(&game->ui))
         goto err;
@@ -295,10 +296,12 @@ static int game_prompt_buy(struct game *game, struct player *player, struct map_
     int ret, buy;
     const char *prompt;
 
-    if (player->asset.n_money < node->price)
+    assert(node->type == MAP_NODE_VACANCY);
+
+    if (player->asset.n_money < node->estate.price)
         return 0;
 
-    prompt = ui_fmt(ui, "[BUY] Pay %d to buy this estate?", node->price);
+    prompt = ui_fmt(ui, "[BUY] Pay %d to buy this estate?", node->estate.price);
     while (1) {
         ret = ui_input_bool_prompt(ui, prompt, &buy);
         if (ret < 0)
@@ -310,9 +313,9 @@ static int game_prompt_buy(struct game *game, struct player *player, struct map_
     if (!buy)
         return 0;
 
-    player->asset.n_money -= node->price;
-    node->owner = player;
-    list_add_tail(&node->estates_list, &player->asset.estates);
+    player->asset.n_money -= node->estate.price;
+    node->estate.owner = player;
+    list_add_tail(&node->estate.estates_list, &player->asset.estates);
 
     fprintf(ui->out, "[BUY] Bought estate at position %d.\n", player->pos);
     return 0;
@@ -328,12 +331,14 @@ static int game_prompt_upgrade(struct game *game, struct player *player, struct 
     int ret, up;
     const char *prompt;
 
-    if (node->level >= ESTATE_SKYSCRAPER)
+    assert(node->type == MAP_NODE_VACANCY);
+
+    if (node->estate.level >= ESTATE_SKYSCRAPER)
         return 0;
-    if (player->asset.n_money < node->price)
+    if (player->asset.n_money < node->estate.price)
         return 0;
 
-    prompt = ui_fmt(ui, "[UPGRADE] Pay %d to upgrade this estate?", node->price);
+    prompt = ui_fmt(ui, "[UPGRADE] Pay %d to upgrade this estate?", node->estate.price);
     while (1) {
         ret = ui_input_bool_prompt(ui, prompt, &up);
         if (ret < 0)
@@ -345,10 +350,10 @@ static int game_prompt_upgrade(struct game *game, struct player *player, struct 
     if (!up)
         return 0;
 
-    player->asset.n_money -= node->price;
-    node->level += 1;
+    player->asset.n_money -= node->estate.price;
+    node->estate.level += 1;
 
-    fprintf(ui->out, "[UPGRADE] Upgraded estate at position %d to level %d.\n", player->pos, node->level);
+    fprintf(ui->out, "[UPGRADE] Upgraded estate at position %d to level %d.\n", player->pos, node->estate.level);
     return 0;
 
 out_stop:
@@ -360,6 +365,8 @@ static int game_player_pay_toll(struct game *game, struct player *player, struct
 {
     struct ui *ui = &game->ui;
     int price = map_node_price(node);
+
+    assert(node->type == MAP_NODE_VACANCY);
 
     fprintf(ui->out, "[TOLL] Need to pay %d.\n", price);
     if (player->buff.n_god_buff > 0) {
@@ -373,11 +380,97 @@ static int game_player_pay_toll(struct game *game, struct player *player, struct
         return 0;
     }
 
-    node->owner->asset.n_money += price;
+    node->estate.owner->asset.n_money += price;
     return 0;
 }
 
-static int game_after_player_done(struct game *game)
+static int game_prompt_item_house(struct game *game, struct player *player, struct map_node *node)
+{
+    struct ui *ui = &game->ui;
+    struct asset *asset = &player->asset;
+    struct item_house *house = &node->item_house;
+    int i, j, ret;
+    struct choice choices[ITEM_MAX + 1] = {};
+    struct select sel;
+    const char *prompt;
+    struct item_info *chosen;
+
+    assert(node->type == MAP_NODE_ITEM_HOUSE);
+
+    if (asset->n_bomb + asset->n_robot + asset->n_block >= PLAYER_MAX_ITEM) {
+        fprintf(ui->out, "[ITEM HOUSE] Inventory full, can't buy new item.\n");
+        return 0;
+    }
+    if (asset->n_points < node->item_house.min_price) {
+        fprintf(ui->out, "[ITEM HOUSE] Player points %d not enough, exit from item house.\n", asset->n_points);
+        return 0;
+    }
+
+    /* build choices */
+    for (i = 0, j = 0; i < ITEM_MAX; i++) {
+        if (!house->items.info[i].on_sell)
+            continue;
+        choices[i].name = ui_item_name(i);
+        choices[i].id = '1' + j;
+        j++;
+    }
+
+    choices[ITEM_MAX].name = "Exit from item house";
+    choices[ITEM_MAX].id = 'f';
+
+    sel.n_selected = 0;
+    sel.n_choice = ARRAY_SIZE(choices);
+    sel.choices = choices;
+    prompt = ui_fmt(ui, "[ITEM HOUSE] Welcome, what item do you what?\n");
+    while (1) {
+        ret = ui_selection_menu_prompt(ui, prompt, &sel);
+        if (ret < 0)
+            goto out_stop;
+        if (ret == 0)
+            continue;
+
+        if (sel.cur_choice == ITEM_MAX) {
+            fprintf(ui->out, "[ITEM HOUSE] Exit from item house.\n");
+            return 0;
+        }
+
+        /* infinite goods supply */
+        chosen = &house->items.info[sel.cur_choice];
+        choices[sel.cur_choice].chosen = 0;
+
+        if (asset->n_points < chosen->price) {
+            fprintf(ui->out, "[ITEM HOUSE] Player points %d not enough, need %d to by %s.\n",
+                    asset->n_points, chosen->price, choices[sel.cur_choice].name);
+            continue;
+        }
+
+        asset->n_points -= chosen->price;
+        fprintf(ui->out, "[ITEM HOUSE] Bought %s, payed %d points.\n", choices[sel.cur_choice].name, chosen->price);
+        /* FIXME: change struct asset to be be fully generic */
+        if (sel.cur_choice == ITEM_BLOCK)
+            asset->n_block++;
+        else if (sel.cur_choice == ITEM_ROBOT)
+            asset->n_robot++;
+
+        /* check again */
+        if (asset->n_bomb + asset->n_robot + asset->n_block >= PLAYER_MAX_ITEM) {
+            fprintf(ui->out, "[ITEM HOUSE] Inventory full, can't buy new item.\n");
+            return 0;
+        }
+        if (asset->n_points < node->item_house.min_price) {
+            fprintf(ui->out, "[ITEM HOUSE] Player points %d not enough, exit from item house.\n", asset->n_points);
+            return 0;
+        }
+    }
+
+    return 0;
+
+out_stop:
+    game_stop(game, GAME_STATE_STOPPED);
+    return -1;
+}
+
+static int game_map_after_action(struct game *game)
 {
     struct map *map = &game->map;
     struct player *player = game->next_player;
@@ -385,14 +478,15 @@ static int game_after_player_done(struct game *game)
 
     switch (node->type) {
     case MAP_NODE_VACANCY:
-        if (!node->owner)
+        if (!node->estate.owner)
             return game_prompt_buy(game, player, node);
 
-        if (node->owner == player)
+        if (node->estate.owner == player)
             return game_prompt_upgrade(game, player, node);
         return game_player_pay_toll(game, player, node);
 
     case MAP_NODE_ITEM_HOUSE:
+        return game_prompt_item_house(game, player, node);
     case MAP_NODE_GIFT_HOUSE:
     case MAP_NODE_MAGIC_HOUSE:
         break;
@@ -403,8 +497,8 @@ static int game_after_player_done(struct game *game)
         break;
 
     case MAP_NODE_MINE:
-        player->asset.n_points += node->points;
-        fprintf(game->ui.out, "[MINE] Got %d points.\n", node->points);
+        player->asset.n_points += node->mine_points;
+        fprintf(game->ui.out, "[MINE] Got %d points.\n", node->mine_points);
         break;
 
     case MAP_NODE_PARK:
@@ -417,12 +511,22 @@ static int game_after_player_done(struct game *game)
     return 0;
 }
 
+static int game_player_after_action(struct game *game)
+{
+    struct map *map = &game->map;
+    struct player *player = game->next_player;
+
+    player->stat.n_sell_done = 0;
+    return 0;
+}
+
 int game_after_action(struct game *game)
 {
     if (game->state != GAME_STATE_RUNNING)
         return 0;
 
-    game_after_player_done(game);
+    game_map_after_action(game);
+    game_player_after_action(game);
 
     return 0;
 }
@@ -521,7 +625,8 @@ static int game_cmd_preset_map(struct game *game, int argc, const char *argv[])
     if (map_set_owner(&game->map, pos, player))
         return -1;
 
-    game->map.nodes[pos].level = lv;
+    assert(game->map.nodes[pos].type == MAP_NODE_VACANCY);
+    game->map.nodes[pos].estate.level = lv;
     return 0;
 }
 
@@ -858,6 +963,58 @@ static int game_cmd_roll(struct game *game)
     return game_player_step(game, game->next_player, 1 + rand() % game->dice_facets);
 }
 
+static int game_cmd_sell(struct game *game, int argc, const char *argv[])
+{
+    struct ui *ui = &game->ui;
+    struct map *map = &game->map;
+    struct player *player = game->next_player;
+    struct map_node *node;
+    int idx, sold;
+    char *endptr;
+
+    if (argc != 2 || !argv[1]) {
+        fprintf(ui->out, "step command syntax error\n");
+        return -1;
+    }
+
+    endptr = NULL;
+    idx = strtol(argv[1], &endptr, 10);
+    if (*endptr) {
+        fprintf(ui->out, "not a valid number: %s\n", argv[1]);
+        return -1;
+    }
+
+    if (idx < 0 || idx >= map->n_used) {
+        fprintf(ui->out, "sell %d out of map idx range [%d, %d)\n", idx, 0, map->n_used);
+        return -1;
+    }
+
+    if (player->stat.n_sell_done >= game->max_sell_per_turn) {
+        fprintf(ui->out, "[SELL] Already sold %d times, wait next turn.\n", player->stat.n_sell_done);
+        return -1;
+    }
+
+    node = &map->nodes[idx];
+    if (node->type != MAP_NODE_VACANCY) {
+        fprintf(ui->out, "[SELL] Cannot sell, map idx %d not allowed to buy or sell.\n", idx);
+        return -1;
+    }
+    if (node->estate.owner != player) {
+        fprintf(ui->out, "[SELL] Cannot sell, map idx %d not owned by current player.\n", idx);
+        return -1;
+    }
+
+    sold = 2 * map_node_price(node);
+    player->asset.n_money += sold;
+
+    node->estate.owner = NULL;
+    node->estate.level = ESTATE_WASTELAND;
+    list_del_init(&node->estate.estates_list);
+
+    fprintf(ui->out, "[SELL] Sold map %d estate at price %d.\n", idx, sold);
+    return 0;
+}
+
 static int game_cmd_step(struct game *game, int argc, const char *argv[])
 {
     struct ui *ui = &game->ui;
@@ -936,6 +1093,8 @@ static int game_handle_command(struct game *game, char *line)
         return game_cmd_roll(game);
 
     } else if (!strcmp(cmd, "sell")) {
+        return game_cmd_sell(game, argc, argv);
+
     } else if (!strcmp(cmd, "query")) {
     } else if (!strcmp(cmd, "block")) {
     } else if (!strcmp(cmd, "robot")) {
@@ -1027,10 +1186,10 @@ void game_exit(struct game *game)
 
 static void game_dump_player_asset(struct ui *ui, int id_char, struct asset *asset)
 {
-    struct map_node *estate;
+    struct map_node *node;
 
-    list_for_each_entry(estate, &asset->estates, estates_list) {
-        fprintf(ui->err, "map %d %c %d\n", estate->idx, id_char, estate->level);
+    list_for_each_entry(node, &asset->estates, estate.estates_list) {
+        fprintf(ui->err, "map %d %c %d\n", node->idx, id_char, node->estate.level);
     }
     fprintf(ui->err, "fund %c %d\n", id_char, asset->n_money);
     fprintf(ui->err, "credit %c %d\n", id_char, asset->n_points);
@@ -1057,8 +1216,8 @@ static void game_dump_player(struct ui *ui, struct player *player)
     fprintf(ui->err, "userloc %c %d %d\n", id_char, player->pos, player->buff.n_empty_rounds);
 
     game_dump_player_item(ui, id_char, &player->asset);
-    if (player->buff.n_god_buff + player->buff.b_god_buff)
-        fprintf(ui->err, "gift %c god %d\n", id_char, player->buff.n_god_buff + player->buff.b_god_buff);
+    if (player->buff.n_god_buff)
+        fprintf(ui->err, "gift %c god %d\n", id_char, player->buff.n_god_buff);
 }
 
 void game_dump(struct game *game)

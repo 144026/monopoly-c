@@ -27,8 +27,10 @@ struct asset {
 struct buff {
     int n_empty_rounds;
     int n_god_buff;
-    int b_sell_estate;
-    int b_god_buff;
+};
+
+struct stat {
+    int n_sell_done;
 };
 
 #define PLAYER_NAME_SZ 32
@@ -48,6 +50,7 @@ struct player {
 
     struct asset asset;
     struct buff buff;
+    struct stat stat;
 };
 
 #define PLAYER_MAX 16

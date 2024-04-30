@@ -134,6 +134,12 @@ static int player_buff_init(struct buff *buff)
     return 0;
 }
 
+static int player_stat_init(struct stat *stat)
+{
+    memset(stat, 0, sizeof(*stat));
+    return 0;
+}
+
 int player_init(struct player *player, int idx, int seq)
 {
     player->idx = idx;
@@ -148,6 +154,7 @@ int player_init(struct player *player, int idx, int seq)
 
     player_asset_init(&player->asset);
     player_buff_init(&player->buff);
+    player_stat_init(&player->stat);
 
     player->valid = 1;
     return 0;

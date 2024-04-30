@@ -34,6 +34,7 @@ struct game {
 
     int next_player_seq;
     struct player *next_player;
+    int max_sell_per_turn;
 };
 
 #define GAME_DEFAULT_DICE_SAHPE 6
@@ -44,6 +45,8 @@ struct game {
 
 #define GAME_PLAYER_MIN 2
 #define GAME_PLAYER_MAX 4
+
+#define GAME_MAX_SELL_PER_TURN 1
 
 /* raw player creation/deletion, unattached */
 int game_add_player(struct game *game, int idx);

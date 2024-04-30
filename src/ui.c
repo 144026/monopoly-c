@@ -12,6 +12,12 @@ static const char item_ui_char[] = {
     [ITEM_ROBOT] = 'R',
 };
 
+static const char *item_ui_name[] = {
+    [ITEM_BLOCK] = "Block",
+    [ITEM_BOMB] = "Bomb",
+    [ITEM_ROBOT] = "Robot",
+};
+
 static const char *player_ui_color[] = {
     [PLAYER_COLOR_INVALID] = "\e[0m",
     [PLAYER_COLOR_RED] = "\e[31m",
@@ -283,7 +289,7 @@ int ui_input_int_prompt(struct ui *ui, const char *prompt, const struct range *r
     return 1;
 }
 
-/* @return: < 0 fatal err, == 0 try again, > 0 done */
+/* @return: < 0 fatal err, == 0 try again, > 0 chosen */
 int ui_selection_menu_prompt(struct ui *ui, const char *prompt, struct select *sel)
 {
     int i;
@@ -346,6 +352,7 @@ int ui_selection_menu_prompt(struct ui *ui, const char *prompt, struct select *s
 
     if (i < sel->n_choice) {
         choice->chosen = 1;
+        sel->cur_choice = i;
         sel->n_selected++;
         return 1;
     }
@@ -413,14 +420,14 @@ static void map_node_render(struct ui *ui, struct map *map, unsigned line, unsig
         return;
     }
 
-    if (!node->owner) {
+    if (node->type != MAP_NODE_VACANCY || !node->estate.owner) {
         fputc(node_render_tab[node->type], ui->out);
         return;
     }
-    owner = node->owner;
+    owner = node->estate.owner;
 
     fprintf(ui->out, "%s", player_ui_color[owner->color]);
-    fputc(node_render_tab[node->type] + node->level, ui->out);
+    fputc(node_render_tab[node->type] + node->estate.level, ui->out);
     fprintf(ui->out, "%s", player_ui_color[PLAYER_COLOR_INVALID]);
     return;
 }
@@ -434,4 +441,12 @@ void ui_map_render(struct ui *ui, struct map *map)
             map_node_render(ui, map, line, col);
         fputc('\n', ui->out);
     }
+}
+
+const char *ui_item_name(enum item_type type)
+{
+    if (type <= ITEM_INVALID || type >= ITEM_MAX)
+        return "??";
+
+    return item_ui_name[type];
 }

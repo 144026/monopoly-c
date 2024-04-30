@@ -24,6 +24,7 @@ struct ui {
 int ui_init(struct ui *ui);
 int ui_uninit(struct ui *ui);
 
+const char *ui_item_name(enum item_type type);
 void ui_map_render(struct ui *ui, struct map *map);
 
 void ui_prompt_player_name(struct ui *ui, struct player *player);
@@ -48,9 +49,11 @@ struct choice {
 };
 
 struct select {
-    int n_selected;
     int n_choice;
     struct choice *choices;
+    /* return from callee */
+    int cur_choice;
+    int n_selected;
 };
 
 int ui_selection_menu_prompt(struct ui *ui, const char *prompt, struct select *sel);

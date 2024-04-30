@@ -46,20 +46,40 @@ enum item_type {
     ITEM_INVALID = -1,
 };
 
-struct map_node {
-    int idx;
-    enum node_type type;
-
+struct estate {
+    int price;
     enum estate_level level;
     struct player *owner;
     struct list_head estates_list;
+};
 
+struct item_info {
+    enum item_type type;
+    int on_sell;
+    int price;
+};
+
+struct items_list {
+    struct item_info info[ITEM_MAX];
+};
+
+struct item_house {
+    int n_on_sell;
+    int min_price;
+    struct items_list items;
+};
+
+struct map_node {
+    int idx;
+    enum node_type type;
     struct list_head players;
     enum item_type item;
     struct player *item_owner;
+
     union {
-        int price;
-        int points;
+        struct estate estate;
+        struct item_house item_house;
+        int mine_points;
     };
 };
 
@@ -70,9 +90,9 @@ struct map_node {
 
 struct map {
     int n_node;
+    int n_used;
     struct map_node *nodes;
 
-    int n_used;
     /* corner is counted in both w/h */
     unsigned int width;
     unsigned int height;
@@ -99,6 +119,7 @@ struct map_layout {
 
     int n_item_house;
     int pos_item_house[MAP_MAX_SPECIAL];
+    struct items_list items;
 
     int n_gift_house;
     int pos_gift_house[MAP_MAX_SPECIAL];
