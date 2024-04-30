@@ -1,0 +1,29 @@
+preset user AQS
+
+preset credit A 10
+preset credit Q 10
+preset credit S 10
+
+preset gift A barrier 1
+preset gift Q robot 1
+preset gift S robot 1
+
+preset barrier 55
+
+preset userloc A 30 0
+preset userloc Q 15 0
+preset userloc S 32 0
+
+preset nextuser S
+
+robot #S
+step 10 #S:32->42
+n
+block -3 #barrier at 27
+step 7 #A:30->37
+n
+robot # do not remove barrier at 27
+step 22 #Q:15->37 through barrier at 27
+n
+
+dump

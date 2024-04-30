@@ -1,0 +1,20 @@
+preset user AQ
+preset gift A robot 5
+preset gift A barrier 5
+preset gift Q robot 5
+preset gift Q barrier 5
+preset userloc A 12 0
+preset userloc Q 45 0
+preset nextuser Q
+step 4 #Q:45-49 park
+step 2 #A:12->14 park
+robot
+robot
+step 1 #Q:49->50
+n
+robot
+robot
+robot
+step 1 #A:14->15
+n
+dump

@@ -1,0 +1,14 @@
+user AQ
+map 2 A 0
+fund A 10400
+credit A 0
+gift A robot 4
+gift A barrier 2
+userloc A 15 0
+fund Q 10000
+credit Q 0
+gift Q robot 5
+gift Q barrier 5
+barrier 13
+userloc Q 47 0
+nextuser Q

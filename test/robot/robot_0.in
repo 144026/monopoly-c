@@ -1,0 +1,23 @@
+preset user AQS
+
+preset credit A 10
+preset credit Q 10
+preset credit S 10
+
+preset gift A barrier 1
+preset gift Q robot 1
+preset gift S barrier 1
+
+preset barrier 43
+
+preset userloc A 30 0
+preset userloc Q 41 0
+preset userloc S 29 0
+
+preset nextuser Q
+
+robot
+step 10
+n
+
+dump

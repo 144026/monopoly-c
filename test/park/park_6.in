@@ -1,0 +1,17 @@
+preset user AQ
+preset map 1 A 0
+preset map 2 A 0
+preset map 3 A 0
+preset gift A robot 2
+preset userloc A 12 0
+preset userloc Q 45 0
+preset nextuser Q
+step 1 #Q:45-46
+n
+step 2 #A:12->14 park
+step 1 #Q:46->47
+n
+robot
+step 1 #A:14->15
+n
+dump
