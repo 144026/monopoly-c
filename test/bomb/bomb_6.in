@@ -1,0 +1,11 @@
+preset user AQJ
+preset userloc A 33 0
+preset userloc Q 32 0
+preset userloc J 32 0
+preset gift A bomb 3
+bomb 2
+step 1
+step 3
+step 3
+1
+dump

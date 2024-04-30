@@ -1,0 +1,14 @@
+user AQJS
+fund A 10000
+fund Q 10000
+fund J 10000
+fund S 10000
+credit A 0
+credit Q 0
+credit J 0
+credit S 0
+userloc A 14 3
+userloc Q 14 3
+userloc J 14 3
+userloc S 14 3
+nextuser A

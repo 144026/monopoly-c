@@ -346,6 +346,7 @@ for item in test_res:
     test_res[item].sort(key=lambda x: x[1])
 
 # report
+tot_ok = tot_bad = tot_time = 0
 print("")
 print("%-24s : %-4s %-4s  %-s" % ("SUITE", "OK", "BAD", "TIME(ms)"))
 for k, v in test_res.items():
@@ -353,10 +354,14 @@ for k, v in test_res.items():
     for res in v:
         if res[2]:
             ok += 1
+            tot_ok += 1
         else:
             bad += 1
+            tot_bad += 1
         time += res[3]
+        tot_time += res[3]
     print("%-24s : %-4d %-4d  %-.2f" % (k, ok, bad, time))
+print("%-24s : %-4d %-4d  %-.2f" % ("Total", tot_ok, tot_bad, tot_time))
 print("")
 
 if args.export == 1:
