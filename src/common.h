@@ -25,3 +25,12 @@ struct range {
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(arr) (sizeof (arr) / sizeof (arr)[0])
 #endif
+
+/* forward declaration */
+struct game;
+struct ui;
+struct map;
+struct player;
+
+struct item_info;
+struct gift_info;

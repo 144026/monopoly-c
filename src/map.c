@@ -27,6 +27,14 @@ const struct map_layout g_default_map_layout_v1 = {
             {.type = ITEM_ROBOT, .on_sell = 1, .price = 30},
         }
     },
+    .gifts = {
+        .n_gifts = GIFT_MAX,
+        .gifts = {
+            [GIFT_MONEY] = {.value = 2000, .name = "Bonus Cash",         .grant = player_grant_gift_money},
+            [GIFT_POINT] = {.value = 200,  .name = "Point Card",    .grant = player_grant_gift_point},
+            [GIFT_GOD]   = {.value = 5,    .name = "God of Wealth", .grant = player_grant_gift_god},
+        }
+    },
 
     .n_area = 3,
     .areas = {
@@ -65,6 +73,14 @@ const struct map_layout g_default_map_layout_v2 = {
             {.type = ITEM_BLOCK, .on_sell = 1, .price = 50},
             {.type = ITEM_BOMB,  .on_sell = 0, .price = 0},
             {.type = ITEM_ROBOT, .on_sell = 1, .price = 30},
+        }
+    },
+    .gifts = {
+        .n_gifts = GIFT_MAX,
+        .gifts = {
+            [GIFT_MONEY] = {.value = 2000, .name = "Bonus Cash",         .grant = player_grant_gift_money},
+            [GIFT_POINT] = {.value = 200,  .name = "Point Card",    .grant = player_grant_gift_point},
+            [GIFT_GOD]   = {.value = 5,    .name = "God of Wealth", .grant = player_grant_gift_god},
         }
     },
 
@@ -141,6 +157,8 @@ static void map_node_init(struct map_node *node, int idx, enum node_type type, c
         memcpy(&node->item_house.items, items, sizeof(node->item_house.items));
 
     } else if (type == MAP_NODE_GIFT_HOUSE) {
+        memcpy(&node->gift_house, priv, sizeof(node->gift_house));
+
     } else if (type == MAP_NODE_MAGIC_HOUSE) {
     } else if (type == MAP_NODE_HOSPITAL) {
     } else if (type == MAP_NODE_PRISON) {
@@ -196,7 +214,7 @@ static int map_fill_layout(struct map *map, const struct map_layout *layout)
     }
     for (i = 0; i < MAP_MAX_SPECIAL && i < layout->n_gift_house; i++) {
         pos = layout->pos_gift_house[i];
-        map_node_init(&map->nodes[pos], pos, MAP_NODE_GIFT_HOUSE, NULL);
+        map_node_init(&map->nodes[pos], pos, MAP_NODE_GIFT_HOUSE, &layout->gifts);
     }
     for (i = 0; i < MAP_MAX_SPECIAL && i < layout->n_prison; i++) {
         pos = layout->pos_prison[i];

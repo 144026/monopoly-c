@@ -1,6 +1,7 @@
 #include "common.h"
 #include "player.h"
 #include "map.h"
+#include "game.h"
 
 static const char *const g_player_ids[PLAYER_MAX] = {
     "Q",
@@ -167,7 +168,6 @@ int player_uninit (struct player *player)
     return player_del_name(player);
 }
 
-
 int player_buff_countdown(struct player *player)
 {
     struct buff *buff = &player->buff;
@@ -177,5 +177,32 @@ int player_buff_countdown(struct player *player)
 
     if (buff->n_empty_rounds > 0)
         buff->n_empty_rounds--;
+    return 0;
+}
+
+int player_grant_gift_money(struct gift_info *gift, struct game *game, struct player *player)
+{
+    struct ui *ui = &game->ui;
+
+    player->asset.n_money += gift->value;
+    fprintf(ui->out, "[GIFT] Acquired bonus cash %d.\n", gift->value);
+    return 0;
+}
+
+int player_grant_gift_point(struct gift_info *gift, struct game *game, struct player *player)
+{
+    struct ui *ui = &game->ui;
+
+    player->asset.n_points += gift->value;
+    fprintf(ui->out, "[GIFT] Acquired bonus points %d.\n", gift->value);
+    return 0;
+}
+
+int player_grant_gift_god(struct gift_info *gift, struct game *game, struct player *player)
+{
+    struct ui *ui = &game->ui;
+
+    player->buff.n_god_buff += gift->value;
+    fprintf(ui->out, "[GIFT] God of Wealth be with you in %d rounds.\n", gift->value);
     return 0;
 }

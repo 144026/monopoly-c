@@ -470,6 +470,49 @@ out_stop:
     return -1;
 }
 
+static int game_prompt_gift_house(struct game *game, struct player *player, struct map_node *node)
+{
+    struct ui *ui = &game->ui;
+    struct gift_house *house = &node->gift_house;
+    int i, j, ret;
+    struct choice choices[GIFT_MAX] = {};
+    struct select sel;
+    const char *prompt;
+    struct gift_info *chosen;
+
+    assert(node->type == MAP_NODE_GIFT_HOUSE);
+
+    /* build choices */
+    for (i = 0, j = 0; i < ITEM_MAX && i < house->n_gifts; i++) {
+        choices[i].name = house->gifts[i].name;
+        choices[i].id = '1' + j;
+        j++;
+    }
+
+    sel.n_selected = 0;
+    sel.n_choice = ARRAY_SIZE(choices);
+    sel.choices = choices;
+    prompt = ui_fmt(ui, "[GIFT HOUSE] Welcome, what gift do you what?\n");
+
+    /* player only has one chance to choose gift */
+    ret = ui_selection_menu_prompt(ui, prompt, &sel);
+    if (ret < 0)
+        goto out_stop;
+
+    if (ret == 0) {
+        fprintf(ui->out, "[GIFT HOUSE] Choice is invalid, exit from gift house.\n");
+    } else {
+        chosen = &house->gifts[sel.cur_choice];
+        chosen->grant(chosen, game, player);
+    }
+
+    return 0;
+
+out_stop:
+    game_stop(game, GAME_STATE_STOPPED);
+    return -1;
+}
+
 static int game_map_after_action(struct game *game)
 {
     struct map *map = &game->map;
@@ -488,6 +531,7 @@ static int game_map_after_action(struct game *game)
     case MAP_NODE_ITEM_HOUSE:
         return game_prompt_item_house(game, player, node);
     case MAP_NODE_GIFT_HOUSE:
+        return game_prompt_gift_house(game, player, node);
     case MAP_NODE_MAGIC_HOUSE:
         break;
 

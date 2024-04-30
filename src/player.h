@@ -1,4 +1,5 @@
 #pragma once
+#include "common.h"
 #include "list.h"
 
 enum player_color {
@@ -74,6 +75,11 @@ const char *player_idx_to_name(int idx);
         player = *__pplayer; \
 
 #define for_each_player_end() }}
+
+
+int player_grant_gift_money(struct gift_info *gift, struct game *game, struct player *player);
+int player_grant_gift_point(struct gift_info *gift, struct game *game, struct player *player);
+int player_grant_gift_god(struct gift_info *gift, struct game *game, struct player *player);
 
 int player_buff_countdown(struct player *player);
 

@@ -1,6 +1,6 @@
 #pragma once
+#include "common.h"
 #include "list.h"
-#include "player.h"
 
 #define AREA_1_PRICE        200
 #define AREA_2_PRICE        500
@@ -69,6 +69,25 @@ struct item_house {
     struct items_list items;
 };
 
+enum gift_type {
+    GIFT_MONEY,
+    GIFT_POINT,
+    GIFT_GOD,
+    GIFT_MAX,
+    GIFT_INVALID = -1,
+};
+
+struct gift_info {
+    int value;
+    const char *name;
+    int (*grant)(struct gift_info *gift, struct game *game, struct player *player);
+};
+
+struct gift_house {
+    int n_gifts;
+    struct gift_info gifts[GIFT_MAX];
+};
+
 struct map_node {
     int idx;
     enum node_type type;
@@ -79,6 +98,7 @@ struct map_node {
     union {
         struct estate estate;
         struct item_house item_house;
+        struct gift_house gift_house;
         int mine_points;
     };
 };
@@ -123,6 +143,7 @@ struct map_layout {
 
     int n_gift_house;
     int pos_gift_house[MAP_MAX_SPECIAL];
+    struct gift_house gifts;
 
     int n_prison;
     int pos_prison[MAP_MAX_SPECIAL];
