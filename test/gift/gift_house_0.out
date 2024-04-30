@@ -1,0 +1,16 @@
+user AQS
+
+fund A 2100
+fund Q 20100
+fund S 20
+
+credit A 0
+credit Q 200
+credit S 0
+gift S god 5
+
+userloc A 35 0
+userloc Q 35 0
+userloc S 35 0
+
+nextuser A

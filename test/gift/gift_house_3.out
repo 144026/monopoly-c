@@ -1,0 +1,14 @@
+user AQ
+
+fund A 10000
+fund Q 10000
+
+credit A 0
+credit Q 0
+
+userloc A 35 0
+userloc Q 1 0
+
+gift A god 9
+
+nextuser Q

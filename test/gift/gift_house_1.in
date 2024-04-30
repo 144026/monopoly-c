@@ -1,0 +1,16 @@
+preset user AQS
+
+preset fund A 100
+preset fund Q 20100
+preset fund S 20
+
+preset userloc A 34 0
+preset userloc Q 32 0
+preset userloc S 32 0
+
+preset nextuser A
+
+step 1
+-5
+
+dump
