@@ -510,6 +510,61 @@ out_stop:
     return -1;
 }
 
+static int game_prompt_magic_house(struct game *game, struct player *player, struct map_node *node)
+{
+    struct ui *ui = &game->ui;
+    const char *prompt;
+    int ret, i;
+    struct choice choices[1 + GAME_PLAYER_MAX] = {};
+    struct select sel;
+    struct player *chosen;
+
+    assert(node->type == MAP_NODE_MAGIC_HOUSE);
+
+    /* build choices */
+    choices[0].name = "Give up and exit from magic house";
+    choices[0].id = '0';
+    for (i = 0; i < GAME_PLAYER_MAX; i++) {
+        choices[i+1].name = player_idx_to_name(i);
+        choices[i+1].id = player_idx_to_char(i);
+        if (i < 9)
+            choices[i+1].alt_id = '1' + i;
+    }
+
+    sel.n_selected = 0;
+    sel.n_choice = ARRAY_SIZE(choices);
+    sel.choices = choices;
+    prompt = ui_fmt(ui, "[MAGIC HOUSE] Welcome, cast dark magic on who? (stop target player)\n");
+
+    while (1) {
+        ret = ui_selection_menu_prompt(ui, prompt, &sel);
+        if (ret < 0)
+            goto out_stop;
+        if (ret == 0)
+            continue;
+
+        if (sel.cur_choice == 0) {
+            fprintf(ui->out, "[MAGIC HOUSE] Exit from magic house.\n");
+            return 0;
+        }
+
+        chosen = &game->players[sel.cur_choice - 1];
+        if (!chosen->valid || !chosen->attached) {
+            fprintf(ui->out, "[MAGIC HOUSE] Input invalid, please select a player currently on map.\n");
+            continue;
+        }
+        break;
+    }
+
+    chosen->buff.n_empty_rounds += 2;
+    fprintf(ui->out, "[MAGIC HOUSE] Added %d empty rounds to player %s.\n", 2, chosen->name);
+    return 0;
+
+out_stop:
+    game_stop(game, GAME_STATE_STOPPED);
+    return -1;
+}
+
 static int game_map_after_action(struct game *game)
 {
     struct map *map = &game->map;
@@ -530,7 +585,7 @@ static int game_map_after_action(struct game *game)
     case MAP_NODE_GIFT_HOUSE:
         return game_prompt_gift_house(game, player, node);
     case MAP_NODE_MAGIC_HOUSE:
-        break;
+        return game_prompt_magic_house(game, player, node);
 
     case MAP_NODE_PRISON:
         player->buff.n_empty_rounds = 2;
@@ -567,7 +622,8 @@ int game_after_action(struct game *game)
     if (game->state != GAME_STATE_RUNNING)
         return 0;
 
-    game_map_after_action(game);
+    if (!game->next_player->stat.empty)
+        game_map_after_action(game);
     game_player_after_action(game);
 
     return 0;
