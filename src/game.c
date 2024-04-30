@@ -290,6 +290,7 @@ static int game_check_finish(struct game *game)
 
     fprintf(game->ui.out, "Congratulations! Player %s has won!\n", game->next_player->name);
     ui_dump_player_stats(&game->ui, "STAT", game->next_player);
+    fprintf(game->ui.out, "\n\n");
 
     /* restart game */
     sleep(2);
@@ -1532,7 +1533,8 @@ int game_event_loop(struct game *game)
             stop_reason = 3;
         }
 
-        ui_map_render(&game->ui, &game->map);
+        if (game->state == GAME_STATE_RUNNING)
+            ui_map_render(&game->ui, &game->map);
 
         should_skip = game_before_action(game);
         if (should_skip && !game->option.opts[GAME_OPT_MANUAL_SKIP].on) {

@@ -455,6 +455,9 @@ int ui_dump_player_stats(struct ui *ui, const char *prompt, struct player *playe
 {
     struct map_node *node;
 
+    if (!player)
+        return 0;
+
     fprintf(ui->out, "[%s] money: %d\n", prompt, player->asset.n_money);
     fprintf(ui->out, "[%s] points: %d\n", prompt, player->asset.n_points);
     fprintf(ui->out, "[%s] items:\n", prompt);
