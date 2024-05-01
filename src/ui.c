@@ -165,9 +165,8 @@ char *ui_read_line(struct ui *ui)
         discard_line(ui->in);
     }
 
-    if (!isatty(fileno(ui->in)) && isatty(fileno(ui->out))) {
-        /* auto play */
-        /* sleep(1); */
+    if (!isatty(fileno(ui->in))) {
+        /* echo back user input */
         fprintf(ui->out, "%s", buf);
     }
 

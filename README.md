@@ -2,14 +2,13 @@
 
 A rewrite of [npurson/monopoly](https://github.com/npurson/monopoly) in C on UNIX.
 
-Try out by running `./autoplay.sh`.
-
 ![game.png](images/game.png)
 
-## Build
+## Build and run
 
 ```
 make
+./autoplay.py
 ```
 
 ## Debug
