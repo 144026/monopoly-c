@@ -277,6 +277,8 @@ int map_init(struct map *map, const struct map_layout *layout)
 {
     int ret;
 
+    memset(map, 0, sizeof(*map));
+
     ret = map_alloc(map, layout->map_size);
     if (ret) {
         game_err("fail to alloc %d map node(s)\n", layout->map_size);
@@ -315,6 +317,7 @@ int map_attach_player(struct map *map, struct player *player)
     list_add(&player->pos_list, &node->players);
     player->attached = 1;
 
+    map->dirty = 1;
     return 0;
 }
 
@@ -334,6 +337,7 @@ int map_detach_player(struct map *map, struct player *player)
     list_del_init(&player->pos_list);
     player->attached = 0;
 
+    map->dirty = 1;
     return 0;
 }
 
@@ -367,6 +371,7 @@ int map_place_item(struct map *map, int pos, enum item_type item, struct player 
     if (owner)
         node->item_owner = owner;
 
+    map->dirty = 1;
     return 0;
 }
 
@@ -401,6 +406,7 @@ int map_set_owner(struct map *map, int pos, struct player *owner)
         node->estate.owner = owner;
         list_add_tail(&node->estate.estates_list, &owner->asset.estates);
     }
+    map->dirty = 1;
     return 0;
 }
 

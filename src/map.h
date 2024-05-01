@@ -113,6 +113,9 @@ struct map {
     int n_used;
     struct map_node *nodes;
 
+    /* need re-draw */
+    int dirty;
+
     /* corner is counted in both w/h */
     unsigned int width;
     unsigned int height;

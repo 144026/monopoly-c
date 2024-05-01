@@ -287,12 +287,17 @@ static int game_prompt_action(struct game *game)
 
 static int game_check_finish(struct game *game)
 {
+    struct ui *ui = &game->ui;
+    struct player *player = game->next_player;
+
     if (game->bankrupt_nr + 1 < game->cur_player_nr)
         return 0;
 
-    fprintf(game->ui.out, "Congratulations! Player %s has won!\n", game->next_player->name);
-    ui_dump_player_stats(&game->ui, "STAT", game->next_player);
-    fprintf(game->ui.out, "\n\n");
+    ui_map_render(ui, &game->map);
+
+    fprintf(ui->out, "Congratulations! Player %s has won!\n", ui_player_name(ui, player));
+    ui_dump_player_stats(ui, "STAT", player);
+    fprintf(ui->out, "\n\n");
 
     /* restart game */
     sleep(2);
@@ -323,8 +328,11 @@ int game_before_action(struct game *game)
 
     player_buff_apply(player);
 
-    if (player->stat.empty)
+    if (player->stat.empty) {
+        fprintf(game->ui.out, "[SKIP] Player %s round is empty (%d left).\n",
+                ui_player_name(&game->ui, player), player->buff.n_empty_rounds);
         return 1;
+    }
     return 0;
 }
 
@@ -1362,7 +1370,7 @@ static int game_cmd_robot(struct game *game, int argc, const char *argv[])
     }
     player->asset.n_robot--;
 
-    /* skip clear player node */
+    /* don't clear node under our foot */
     for (i = 1, n_clear = 0; i < GAME_ITEM_ROBOT_RANGE; i++) {
         pos = (player->pos + i) % map->n_used;
         if (map->nodes[pos].item != ITEM_INVALID)

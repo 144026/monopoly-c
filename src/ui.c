@@ -91,7 +91,7 @@ static int ui_vsnprintf(char *buf, size_t size, const char *format, va_list ap)
     return size;
 }
 
-const char * ui_fmt(struct ui *ui, const char *fmt, ...)
+const char *ui_fmt(struct ui *ui, const char *fmt, ...)
 {
     char *buf = ui->fmt_buf[ui->fmt_idx];
     va_list ap;
@@ -105,21 +105,22 @@ const char * ui_fmt(struct ui *ui, const char *fmt, ...)
     return buf;
 }
 
-void ui_prompt_player_name(struct ui *ui, struct player *player)
+const char *ui_player_name(struct ui *ui, struct player *player)
 {
-    if (!player || !player->valid || !player->attached) {
-        fprintf(ui->out, "NULL");
-        return;
-    }
-
-    fprintf(ui->out, "%s", player_ui_color[player->color]);
+    if (!player || !player->valid || !player->attached)
+        return "NULL";
 
     if (!player->name)
-        fprintf(ui->out, "%c", player_id_to_char(player));
-    else
-        fprintf(ui->out, "%s", player->name);
+        return ui_fmt(ui, "%s%c%s", player_ui_color[player->color],
+                      player_id_to_char(player), player_ui_color[PLAYER_COLOR_INVALID]);
 
-    fprintf(ui->out, "%s", player_ui_color[PLAYER_COLOR_INVALID]);
+    return ui_fmt(ui, "%s%s%s", player_ui_color[player->color],
+                    player->name, player_ui_color[PLAYER_COLOR_INVALID]);
+}
+
+void ui_prompt_player_name(struct ui *ui, struct player *player)
+{
+    fprintf(ui->out, "%s", ui_player_name(ui, player));
 }
 
 
@@ -435,6 +436,10 @@ void ui_map_render(struct ui *ui, struct map *map)
 {
     int line, col;
 
+    if (!map->dirty)
+        return;
+
+    map->dirty = 0;
     for (line = 0; line < map->height; line++) {
         for (col = 0; col < map->width; col++)
             map_node_render(ui, map, line, col);
