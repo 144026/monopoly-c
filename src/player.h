@@ -69,14 +69,17 @@ const char *player_idx_to_name(int idx);
 #define for_each_arr_entry(ent, arr, size) \
     for ((ent) = (arr); (ent) - (arr) < size; (ent)++)
 
-#define for_each_player(game, pplayer) for_each_arr_entry(pplayer, (game)->cur_players, (game)->cur_player_nr)
+#define for_each_pplayer(game, pplayer) \
+    for_each_arr_entry(pplayer, (game)->cur_players, (game)->cur_player_nr)
 
-#define for_each_player_begin(game, player) { \
-    struct player *const *__pplayer; \
-    for_each_player(game, __pplayer) { \
-        player = *__pplayer; \
+#define for_each_player_begin(game, it) do {        \
+    struct player *const *__p##it;                  \
+    for_each_pplayer(game, __p##it) {               \
+        it = *__p##it;                              \
 
-#define for_each_player_end() }}
+#define for_each_player_end()                       \
+    }                                               \
+} while (0)
 
 
 int player_grant_gift_money(struct gift_info *gift, struct game *game, struct player *player);

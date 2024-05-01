@@ -103,7 +103,7 @@ struct player *game_get_player_by_id(struct game *game, const char *id)
     for_each_player_begin(game, player) {
         if (0 == strcmp(player->id, id))
             return player;
-    } for_each_player_end()
+    } for_each_player_end();
     return NULL;
 }
 
@@ -1629,14 +1629,14 @@ void game_dump(struct game *game)
 
     for_each_player_begin(game, player) {
         fprintf(ui->err, "%c", player_id_to_char(player));
-    } for_each_player_end()
+    } for_each_player_end();
 
     if (game->cur_player_nr)
         fprintf(ui->err, "\n");
 
     for_each_player_begin(game, player) {
         game_dump_player(ui, player);
-    } for_each_player_end()
+    } for_each_player_end();
 
     for (i = 0; i < game->map.n_used; i++) {
         node = &game->map.nodes[i];
