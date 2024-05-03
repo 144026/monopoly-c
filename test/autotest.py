@@ -176,7 +176,7 @@ def check(case):
     if args.fail and (not out_kv == ans_kv):
         # export error
         export_failed_case(
-            'diff-%s-%s-%s.txt' % (case[0], casename, datetime.datetime.now().strftime("%m-%d %Hh%Mm%Ss")),
+            'diff-%s-%s-%s.txt' % (case[0], casename, datetime.datetime.now().strftime("%Y-%m-%d-%H%M%S")),
             out_kv, ans_kv
         )
         pass

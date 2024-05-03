@@ -1164,6 +1164,7 @@ static int game_player_step(struct game *game, struct player *player, int step)
 
     if (step == 0) {
         game_dbg("step 0 hack\n");
+        n = 0;
         pos = player->pos;
         goto step_into;
     }
@@ -1537,9 +1538,6 @@ int game_event_loop(struct game *game)
         if (g_game_events.event_winch)
             ui_handle_winch(&game->ui, &game->map);
 
-        if (game->state == GAME_STATE_RUNNING)
-            ui_map_render(&game->ui, &game->map);
-
         should_skip = game_before_action(game);
         if (should_skip && !game->option.opts[GAME_OPT_MANUAL_SKIP].on) {
             goto skip_action;
@@ -1557,6 +1555,9 @@ int game_event_loop(struct game *game)
             game->state = GAME_STATE_RUNNING;
             ui_on_game_start(&game->ui, &game->map);
         }
+
+        if (game->state == GAME_STATE_RUNNING)
+            ui_map_render(&game->ui, &game->map);
 
         if (should_rotate <= 0)
             continue;
