@@ -23,8 +23,8 @@ def sigwinch_passthrough (sig, data):
         child.setwinsize(a[0],a[1])
 
 def terminate(sig, data):
+    print("terminate")
     child.kill(signal.SIGTERM)
-    sys.exit(0)
 
 child = pexpect.spawn('./monopoly')
 # pty device echos back what we send, only need to log read buffer
@@ -53,7 +53,11 @@ for idx in range(1, 5):
 random.seed()
 
 while True:
-    i = child.expect([player_prompt, menu_prompt, bool_prompt, end_prompt])
+    try:
+        i = child.expect([player_prompt, menu_prompt, bool_prompt, end_prompt])
+    except:
+        sys.exit(1)
+
     if i == 0:
         child.sendline(random.choice(['roll']))
     elif i == 1:

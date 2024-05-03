@@ -17,6 +17,7 @@ struct ui {
     int out_isatty;
     int lines;
     int cols;
+    int use_clear;
     int use_setwin;
 
     int in_buf_size;

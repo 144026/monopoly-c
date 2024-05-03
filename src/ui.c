@@ -495,10 +495,11 @@ void ui_map_render(struct ui *ui, struct map *map)
             fprintf(ui->out, VT100_CURSOR_POS, map->height + 1, 0);
             fprintf(ui->out, VT100_CLEAR_EOL);
             fprintf(ui->out, VT100_CLEAR_BOS);
-        } else {
+            fprintf(ui->out, VT100_CURSOR_HOME);
+        } else if (ui->use_clear) {
             fprintf(ui->out, VT100_CLEAR_SCREEN);
+            fprintf(ui->out, VT100_CURSOR_HOME);
         }
-        fprintf(ui->out, VT100_CURSOR_HOME);
     }
 
     for (line = 0; line < map->height; line++) {
@@ -508,9 +509,11 @@ void ui_map_render(struct ui *ui, struct map *map)
     }
 
     if (ui_is_interactive(ui)) {
-        fprintf(ui->out, "\n");
-        if (ui->use_setwin)
+        /* no extra empty line if terminal height is small */
+        if (ui->use_setwin) {
+            fprintf(ui->out, "\n");
             fprintf(ui->out, VT100_RESTORE_CURSOR);
+        }
     }
 }
 
@@ -549,11 +552,17 @@ int ui_dump_player_stats(struct ui *ui, const char *prompt, struct player *playe
     return 0;
 }
 
-#define UI_TEXT_ROWS_MIN 10
+#define UI_TEXT_CLEAR_ROWS_MIN  5
+#define UI_TEXT_SCROLL_ROWS_MIN 10
+
+static inline int ui_allow_clear(struct ui *ui, int map_height)
+{
+    return ui->lines >= UI_TEXT_CLEAR_ROWS_MIN + map_height;
+}
 
 static inline int ui_allow_setwin(struct ui *ui, int map_height)
 {
-    return ui->lines >= UI_TEXT_ROWS_MIN + 1 + map_height;
+    return ui->lines >= UI_TEXT_SCROLL_ROWS_MIN + 1 + map_height;
 }
 
 void ui_on_game_start(struct ui *ui, struct map *map)
@@ -561,16 +570,21 @@ void ui_on_game_start(struct ui *ui, struct map *map)
     if (!ui_is_interactive(ui))
         return;
 
-    game_dbg("ui is interactive, ui %d lines, map %u lines\n", ui->lines, map->height);
-    fprintf(ui->out, VT100_CLEAR_SCREEN);
-    fprintf(ui->out, VT100_CURSOR_HOME);
+    ui->use_clear = ui_allow_clear(ui, map->height);
+    ui->use_setwin = ui_allow_setwin(ui, map->height);
 
-    if (ui_allow_setwin(ui, map->height)) {
-        ui->use_setwin = 1;
+    if (ui->use_clear || ui->use_setwin) {
+        fprintf(ui->out, VT100_CLEAR_SCREEN);
+        fprintf(ui->out, VT100_CURSOR_HOME);
+    }
+
+    if (ui->use_setwin) {
         fprintf(ui->out, VT100_SETWIN_FMT, map->height + 2, 0);
         fprintf(ui->out, VT100_CURSOR_POS, map->height + 2, 0);
-        game_dbg("using setwin\n");
     }
+
+    game_dbg("ui is interactive, ui %d lines, map %u lines\n", ui->lines, map->height);
+    game_dbg("ui clear %d setwin %d\n", ui->use_clear, ui->use_setwin);
 }
 
 void ui_on_game_stop(struct ui *ui)
@@ -580,12 +594,14 @@ void ui_on_game_stop(struct ui *ui)
 
     if (ui->use_setwin) {
         fprintf(ui->out, "%s%s%s", VT100_SAVE_CURSOR, VT100_RESETWIN, VT100_RESTORE_CURSOR);
+        game_dbg("reset window\n");
     }
+    fflush(ui->out);
 }
 
 void ui_handle_winch(struct ui *ui, struct map *map)
 {
-    int setwin_ok;
+    int clear_ok, setwin_ok;
     struct winsize w;
 
     g_game_events.event_winch = 0;
@@ -596,11 +612,15 @@ void ui_handle_winch(struct ui *ui, struct map *map)
     ui->lines = w.ws_row;
     ui->cols = w.ws_col;
 
+    clear_ok = ui_allow_clear(ui, map->height);
+    game_dbg("old clear %d, new clear %d\n", ui->use_clear, clear_ok);
+    ui->use_clear = clear_ok;
+
     setwin_ok = ui_allow_setwin(ui, map->height);
+    game_dbg("old setwin %d, new setwin %d\n", ui->use_setwin, setwin_ok);
+
     if (!ui_is_interactive(ui) || ui->use_setwin == setwin_ok)
         return;
-
-    game_dbg("old setwin %d, new setwin %d\n", ui->use_setwin, setwin_ok);
 
     /* enable setwin */
     if (!ui->use_setwin && setwin_ok) {
