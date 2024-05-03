@@ -23,6 +23,7 @@ struct range {
 #endif
 
 /* forward declaration */
+struct game_events;
 struct game;
 struct ui;
 struct map;
@@ -30,3 +31,5 @@ struct player;
 
 struct item_info;
 struct gift_info;
+
+extern struct game_events g_game_events;

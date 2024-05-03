@@ -37,6 +37,7 @@ void ui_map_render(struct ui *ui, struct map *map);
 
 void ui_on_game_start(struct ui *ui, struct map *map);
 void ui_on_game_stop(struct ui *ui);
+void ui_handle_winch(struct ui *ui, struct map *map);
 
 void ui_prompt_player_name(struct ui *ui, struct player *player);
 int ui_dump_player_stats(struct ui *ui, const char *prompt, struct player *player);

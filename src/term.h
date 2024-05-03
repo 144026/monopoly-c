@@ -9,7 +9,7 @@
 
 #define VT100_CLEAR_EOL "\e[K"
 
-#define VT100_SETWIN "\e[%u;%ur"
+#define VT100_SETWIN_FMT "\e[%u;%ur"
 #define VT100_RESETWIN "\e[;r"
 
 #define VT100_CURSOR_POS "\e[%u;%uH"

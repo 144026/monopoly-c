@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import os
 import sys
 import time
 import random
@@ -11,9 +12,30 @@ player_prompt = "\w+> "
 menu_prompt = "input your choice\? "
 bool_prompt = " \(y/n\) "
 
+# from pty_spawn.py:
+# Note this 'child' is global and used in sigwinch_passthrough.
+import struct, fcntl, termios, signal
+def sigwinch_passthrough (sig, data):
+    s = struct.pack("HHHH", 0, 0, 0, 0)
+    a = struct.unpack('hhhh', fcntl.ioctl(sys.stdout.fileno(),
+        termios.TIOCGWINSZ , s))
+    if not child.closed:
+        child.setwinsize(a[0],a[1])
+
+def terminate(sig, data):
+    child.kill(signal.SIGTERM)
+    sys.exit(0)
+
 child = pexpect.spawn('./monopoly')
 # pty device echos back what we send, only need to log read buffer
 child.logfile_read = sys.stdout.buffer
+
+rows, cols = os.popen("stty size").read().split()
+child.setwinsize(int(rows), int(cols))
+
+signal.signal(signal.SIGWINCH, sigwinch_passthrough)
+signal.signal(signal.SIGINT, terminate)
+signal.signal(signal.SIGTERM, terminate)
 
 child.expect(start_prompt)
 child.sendline('start')

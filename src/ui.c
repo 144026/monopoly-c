@@ -4,6 +4,7 @@
 #include "common.h"
 #include "player.h"
 #include "ui.h"
+#include "game.h"
 #include "term.h"
 
 
@@ -172,11 +173,21 @@ char *ui_read_line(struct ui *ui)
     /* guard */
     buf[size - 2] = buf[size - 1] = 0;
 
+again:
     ret = fgets(buf, size, ui->in);
     if (!ret) {
         if (feof(ui->in)) {
             game_dbg("end of file\n");
             return NULL;
+        }
+        if (g_game_events.event_term) {
+            game_dbg("killed by signal %d\n", g_game_events.event_term);
+            g_game_events.event_term = 0;
+            return NULL;
+        }
+        if (g_game_events.event_winch) {
+            /* handle window resize later in main game loop */
+            goto again;
         }
         game_err("fail to read input\n");
         return "";
@@ -538,6 +549,13 @@ int ui_dump_player_stats(struct ui *ui, const char *prompt, struct player *playe
     return 0;
 }
 
+#define UI_TEXT_ROWS_MIN 10
+
+static inline int ui_allow_setwin(struct ui *ui, int map_height)
+{
+    return ui->lines >= UI_TEXT_ROWS_MIN + 1 + map_height;
+}
+
 void ui_on_game_start(struct ui *ui, struct map *map)
 {
     if (!ui_is_interactive(ui))
@@ -547,9 +565,9 @@ void ui_on_game_start(struct ui *ui, struct map *map)
     fprintf(ui->out, VT100_CLEAR_SCREEN);
     fprintf(ui->out, VT100_CURSOR_HOME);
 
-    if (ui->lines >= 12 + map->height) {
+    if (ui_allow_setwin(ui, map->height)) {
         ui->use_setwin = 1;
-        fprintf(ui->out, VT100_SETWIN, map->height + 2, 0);
+        fprintf(ui->out, VT100_SETWIN_FMT, map->height + 2, 0);
         fprintf(ui->out, VT100_CURSOR_POS, map->height + 2, 0);
         game_dbg("using setwin\n");
     }
@@ -562,5 +580,41 @@ void ui_on_game_stop(struct ui *ui)
 
     if (ui->use_setwin) {
         fprintf(ui->out, "%s%s%s", VT100_SAVE_CURSOR, VT100_RESETWIN, VT100_RESTORE_CURSOR);
+    }
+}
+
+void ui_handle_winch(struct ui *ui, struct map *map)
+{
+    int setwin_ok;
+    struct winsize w;
+
+    g_game_events.event_winch = 0;
+    if (!ui->out_isatty)
+        return;
+
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+    ui->lines = w.ws_row;
+    ui->cols = w.ws_col;
+
+    setwin_ok = ui_allow_setwin(ui, map->height);
+    if (!ui_is_interactive(ui) || ui->use_setwin == setwin_ok)
+        return;
+
+    game_dbg("old setwin %d, new setwin %d\n", ui->use_setwin, setwin_ok);
+
+    /* enable setwin */
+    if (!ui->use_setwin && setwin_ok) {
+        ui->use_setwin = 1;
+        fprintf(ui->out, VT100_SAVE_CURSOR);
+        fprintf(ui->out, VT100_SETWIN_FMT, map->height + 2, 0);
+        fprintf(ui->out, VT100_RESTORE_CURSOR);
+        return;
+    }
+
+    /* disable setwin */
+    if (ui->use_setwin && !setwin_ok) {
+        ui->use_setwin = 0;
+        fprintf(ui->out, "%s%s%s", VT100_SAVE_CURSOR, VT100_RESETWIN, VT100_RESTORE_CURSOR);
+        return;
     }
 }

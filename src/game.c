@@ -1534,6 +1534,9 @@ int game_event_loop(struct game *game)
             stop_reason = 3;
         }
 
+        if (g_game_events.event_winch)
+            ui_handle_winch(&game->ui, &game->map);
+
         if (game->state == GAME_STATE_RUNNING)
             ui_map_render(&game->ui, &game->map);
 

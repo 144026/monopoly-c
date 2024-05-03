@@ -34,6 +34,11 @@ struct game_options {
     struct game_opt opts[GAME_OPT_MAX];
 };
 
+struct game_events {
+    int event_winch;
+    int event_term;
+};
+
 struct game {
     enum game_state state;
     int need_dump;
