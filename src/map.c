@@ -375,6 +375,22 @@ int map_place_item(struct map *map, int pos, enum item_type item, struct player 
     return 0;
 }
 
+int map_clear_item(struct map *map, int pos)
+{
+    struct map_node *node;
+
+    if (pos < 0 || pos >= map->n_used)
+        return -1;
+
+    node = &map->nodes[pos];
+    if (node->item != ITEM_INVALID) {
+        node->item = ITEM_INVALID;
+        map->dirty = 1;
+    }
+    node->item_owner = NULL;
+    return 0;
+}
+
 int map_set_owner(struct map *map, int pos, struct player *owner)
 {
     struct map_node *node;
@@ -405,8 +421,8 @@ int map_set_owner(struct map *map, int pos, struct player *owner)
     if (owner != node->estate.owner) {
         node->estate.owner = owner;
         list_add_tail(&node->estate.estates_list, &owner->asset.estates);
+        map->dirty = 1;
     }
-    map->dirty = 1;
     return 0;
 }
 

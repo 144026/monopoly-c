@@ -1180,7 +1180,7 @@ static int game_player_step(struct game *game, struct player *player, int step)
 step_into:
         node = &map->nodes[pos];
         if (node->item == ITEM_BLOCK) {
-            node->item = ITEM_INVALID;
+            map_clear_item(map, node->idx);
             fprintf(ui->out, "[STEP] Walked %d step(s) forward.\n", n);
             fprintf(ui->out, "[BLOCK] Oh! Stop here.\n");
             if (map_move_player(map, player, pos))
@@ -1190,7 +1190,7 @@ step_into:
         if (node->item == ITEM_BOMB) {
             int hospital_pos;
 
-            node->item = ITEM_INVALID;
+            map_clear_item(map, node->idx);
             fprintf(ui->out, "[STEP] Walked %d step(s) forward.\n", n);
             fprintf(ui->out, "[BOMB] Explosion! Transferred to nearest hospital, rest 3 rounds\n");
 
@@ -1375,7 +1375,7 @@ static int game_cmd_robot(struct game *game, int argc, const char *argv[])
         pos = (player->pos + i) % map->n_used;
         if (map->nodes[pos].item != ITEM_INVALID)
             n_clear++;
-        map->nodes[pos].item = ITEM_INVALID;
+        map_clear_item(map, pos);
     }
 
     fprintf(ui->out, "[ITEM] Used '%s', cleared %d items.\n", ui_item_name(ITEM_ROBOT), n_clear);

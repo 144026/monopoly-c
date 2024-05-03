@@ -1,7 +1,6 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include "common.h"
-#include "game.h"
 #include "player.h"
 #include "ui.h"
 

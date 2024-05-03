@@ -182,6 +182,7 @@ int map_detach_player(struct map *map, struct player *player);
 int map_move_player(struct map *map, struct player *player, int pos);
 
 int map_place_item(struct map *map, int pos, enum item_type item, struct player *owner);
+int map_clear_item(struct map *map, int pos);
 
 int map_set_owner(struct map *map, int pos, struct player *owner);
 
