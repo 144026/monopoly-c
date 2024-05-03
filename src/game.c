@@ -295,13 +295,15 @@ static int game_check_finish(struct game *game)
 
     ui_map_render(ui, &game->map);
 
+    /* reset cursor window to avoid truncating stats dump */
+    game_stop(game, GAME_STOP_NODUMP);
+
     fprintf(ui->out, "Congratulations! Player %s has won!\n", ui_player_name(ui, player));
     ui_dump_player_stats(ui, "STAT", player);
     fprintf(ui->out, "\n\n");
 
     /* restart game */
     sleep(2);
-    game_stop(game, GAME_STOP_NODUMP);
     game_uninit(game);
 
     if (game_init(game)) {
@@ -698,8 +700,9 @@ int game_after_action(struct game *game)
     if (player->stat.bankrupt || !player->attached)
         return 0;
 
-    if (!game->next_player->stat.empty)
+    if (!player->stat.empty)
         game_map_after_action(game);
+
     game_player_after_action(game);
 
     return 0;
@@ -1547,8 +1550,10 @@ int game_event_loop(struct game *game)
         }
 
         should_rotate = game_handle_command(game, line, should_skip);
-        if (game->state == GAME_STATE_STARTING)
+        if (game->state == GAME_STATE_STARTING) {
             game->state = GAME_STATE_RUNNING;
+            ui_on_game_start(&game->ui, &game->map);
+        }
 
         if (should_rotate <= 0)
             continue;
@@ -1574,6 +1579,7 @@ void game_stop(struct game *game, int need_dump)
 #else
     game->need_dump = need_dump;
 #endif
+    ui_on_game_stop(&game->ui);
 }
 
 void game_exit(struct game *game)

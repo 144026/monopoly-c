@@ -3,7 +3,7 @@
 #include "list.h"
 
 enum player_color {
-    PLAYER_COLOR_INVALID = 0,
+    PLAYER_COLOR_NONE = 0,
     PLAYER_COLOR_RED,
     PLAYER_COLOR_GREEN,
     PLAYER_COLOR_BLUE,

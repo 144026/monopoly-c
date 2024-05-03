@@ -1,8 +1,10 @@
 #include <stdarg.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 #include "common.h"
 #include "player.h"
 #include "ui.h"
+#include "term.h"
 
 
 static const char item_ui_char[] = {
@@ -18,12 +20,12 @@ static const char *item_ui_name[] = {
 };
 
 static const char *player_ui_color[] = {
-    [PLAYER_COLOR_INVALID] = "\e[0m",
-    [PLAYER_COLOR_RED] = "\e[31m",
-    [PLAYER_COLOR_GREEN] = "\e[32m",
-    [PLAYER_COLOR_BLUE] = "\e[34m",
-    [PLAYER_COLOR_YELLOW] = "\e[33m",
-    [PLAYER_COLOR_WHITE] = "\e[37m",
+    [PLAYER_COLOR_NONE] = "",
+    [PLAYER_COLOR_RED] = VT100_COLOR_RED,
+    [PLAYER_COLOR_GREEN] = VT100_COLOR_GREEN,
+    [PLAYER_COLOR_BLUE] = VT100_COLOR_BLUE,
+    [PLAYER_COLOR_YELLOW] = VT100_COLOR_YELLOW,
+    [PLAYER_COLOR_WHITE] = VT100_COLOR_WHITE,
 };
 
 int ui_init(struct ui *ui)
@@ -34,6 +36,15 @@ int ui_init(struct ui *ui)
     ui->in = stdin;
     ui->out = stdout;
     ui->err = stderr;
+
+    ui->in_isatty = isatty(fileno(ui->in));
+    ui->out_isatty = isatty(fileno(ui->out));
+    if (ui->out_isatty) {
+        struct winsize w;
+        ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
+        ui->lines = w.ws_row;
+        ui->cols = w.ws_col;
+    }
 
     ui->in_buf_size = INPUT_BUF_SIZE;
     ui->in_buf = calloc(1, INPUT_BUF_SIZE);
@@ -76,6 +87,11 @@ int ui_uninit(struct ui *ui)
     return 0;
 }
 
+int ui_is_interactive(struct ui *ui)
+{
+    return ui && ui->in_isatty && ui->out_isatty;
+}
+
 static int ui_vsnprintf(char *buf, size_t size, const char *format, va_list ap)
 {
     int n;
@@ -106,15 +122,23 @@ const char *ui_fmt(struct ui *ui, const char *fmt, ...)
 
 const char *ui_player_name(struct ui *ui, struct player *player)
 {
+    const char *color;
+    const char *modesoff;
+
     if (!player || !player->valid || !player->attached)
         return "NULL";
 
-    if (!player->name)
-        return ui_fmt(ui, "%s%c%s", player_ui_color[player->color],
-                      player_id_to_char(player), player_ui_color[PLAYER_COLOR_INVALID]);
+    if (ui->out_isatty) {
+        color = player_ui_color[player->color];
+        modesoff = VT100_MODES_OFF;
+    } else {
+        color = modesoff = "";
+    }
 
-    return ui_fmt(ui, "%s%s%s", player_ui_color[player->color],
-                    player->name, player_ui_color[PLAYER_COLOR_INVALID]);
+    if (!player->name)
+        return ui_fmt(ui, "%s%c%s", color, player_id_to_char(player), modesoff);
+
+    return ui_fmt(ui, "%s%s%s", color, player->name, modesoff);
 }
 
 void ui_prompt_player_name(struct ui *ui, struct player *player)
@@ -165,7 +189,7 @@ char *ui_read_line(struct ui *ui)
         discard_line(ui->in);
     }
 
-    if (!isatty(fileno(ui->in))) {
+    if (!ui->in_isatty) {
         /* echo back user input */
         fprintf(ui->out, "%s", buf);
     }
@@ -403,19 +427,25 @@ static void map_node_render(struct ui *ui, struct map *map, unsigned line, unsig
     node = &map->nodes[pos];
     if (!list_empty(&node->players)) {
         player = list_first_entry(&node->players, struct player, pos_list);
-        fprintf(ui->out, "%s", player_ui_color[player->color]);
+        if (ui->out_isatty) {
+            fprintf(ui->out, "%s", VT100_MODE_BOLD);
+            fprintf(ui->out, "%s", player_ui_color[player->color]);
+        }
+
         fputc(player_id_to_char(player), ui->out);
-        fprintf(ui->out, "%s", player_ui_color[PLAYER_COLOR_INVALID]);
+        if (ui->out_isatty)
+            fprintf(ui->out, "%s", VT100_MODES_OFF);
         return;
     }
 
     if (node->item > ITEM_INVALID && node->item < ITEM_MAX) {
         owner = node->item_owner;
-        if (owner)
+        if (ui->out_isatty && owner)
             fprintf(ui->out, "%s", player_ui_color[owner->color]);
+
         fputc(item_ui_char[node->item], ui->out);
-        if (owner)
-            fprintf(ui->out, "%s", player_ui_color[PLAYER_COLOR_INVALID]);
+        if (ui->out_isatty && owner)
+            fprintf(ui->out, "%s", VT100_MODES_OFF);
         return;
     }
 
@@ -425,9 +455,12 @@ static void map_node_render(struct ui *ui, struct map *map, unsigned line, unsig
     }
     owner = node->estate.owner;
 
-    fprintf(ui->out, "%s", player_ui_color[owner->color]);
+    if (ui->out_isatty)
+        fprintf(ui->out, "%s", player_ui_color[owner->color]);
+
     fputc(node_render_tab[node->type] + node->estate.level, ui->out);
-    fprintf(ui->out, "%s", player_ui_color[PLAYER_COLOR_INVALID]);
+    if (ui->out_isatty)
+        fprintf(ui->out, "%s", VT100_MODES_OFF);
     return;
 }
 
@@ -439,10 +472,34 @@ void ui_map_render(struct ui *ui, struct map *map)
         return;
 
     map->dirty = 0;
+
+    if (ui_is_interactive(ui)) {
+        if (ui->use_setwin) {
+            fprintf(ui->out, VT100_SAVE_CURSOR);
+            /*
+             * clearbos also clears current character under cursor, to avoid clearing first character
+             * of our prompt (starts at map->height + 2), seek to the line above, clear that line,
+             * then do clearbos.
+             */
+            fprintf(ui->out, VT100_CURSOR_POS, map->height + 1, 0);
+            fprintf(ui->out, VT100_CLEAR_EOL);
+            fprintf(ui->out, VT100_CLEAR_BOS);
+        } else {
+            fprintf(ui->out, VT100_CLEAR_SCREEN);
+        }
+        fprintf(ui->out, VT100_CURSOR_HOME);
+    }
+
     for (line = 0; line < map->height; line++) {
         for (col = 0; col < map->width; col++)
             map_node_render(ui, map, line, col);
         fputc('\n', ui->out);
+    }
+
+    if (ui_is_interactive(ui)) {
+        fprintf(ui->out, "\n");
+        if (ui->use_setwin)
+            fprintf(ui->out, VT100_RESTORE_CURSOR);
     }
 }
 
@@ -479,4 +536,31 @@ int ui_dump_player_stats(struct ui *ui, const char *prompt, struct player *playe
         fprintf(ui->out, "[%s]   house #%d, level %d, value %d\n", prompt, node->idx, node->estate.level, node->estate.price);
     }
     return 0;
+}
+
+void ui_on_game_start(struct ui *ui, struct map *map)
+{
+    if (!ui_is_interactive(ui))
+        return;
+
+    game_dbg("ui is interactive, ui %d lines, map %u lines\n", ui->lines, map->height);
+    fprintf(ui->out, VT100_CLEAR_SCREEN);
+    fprintf(ui->out, VT100_CURSOR_HOME);
+
+    if (ui->lines >= 12 + map->height) {
+        ui->use_setwin = 1;
+        fprintf(ui->out, VT100_SETWIN, map->height + 2, 0);
+        fprintf(ui->out, VT100_CURSOR_POS, map->height + 2, 0);
+        game_dbg("using setwin\n");
+    }
+}
+
+void ui_on_game_stop(struct ui *ui)
+{
+    if (!ui_is_interactive(ui))
+        return;
+
+    if (ui->use_setwin) {
+        fprintf(ui->out, "%s%s%s", VT100_SAVE_CURSOR, VT100_RESETWIN, VT100_RESTORE_CURSOR);
+    }
 }
