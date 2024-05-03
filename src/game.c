@@ -470,7 +470,7 @@ static int game_prompt_item_house(struct game *game, struct player *player, stru
     sel.n_selected = 0;
     sel.n_choice = ARRAY_SIZE(choices);
     sel.choices = choices;
-    prompt = ui_fmt(ui, "[ITEM HOUSE] Welcome, what item do you what?\n");
+    prompt = ui_fmt(ui, "[ITEM HOUSE] Welcome %s, what item do you what?\n", ui_player_name(ui, player));
     while (1) {
         ret = ui_selection_menu_prompt(ui, prompt, &sel);
         if (ret < 0)
@@ -542,7 +542,7 @@ static int game_prompt_gift_house(struct game *game, struct player *player, stru
     sel.n_selected = 0;
     sel.n_choice = ARRAY_SIZE(choices);
     sel.choices = choices;
-    prompt = ui_fmt(ui, "[GIFT HOUSE] Welcome, what gift do you what?\n");
+    prompt = ui_fmt(ui, "[GIFT HOUSE] Welcome %s, what gift do you what?\n", ui_player_name(ui, player));
 
     /* player only has one chance to choose gift */
     ret = ui_selection_menu_prompt(ui, prompt, &sel);
@@ -587,7 +587,8 @@ static int game_prompt_magic_house(struct game *game, struct player *player, str
     sel.n_selected = 0;
     sel.n_choice = ARRAY_SIZE(choices);
     sel.choices = choices;
-    prompt = ui_fmt(ui, "[MAGIC HOUSE] Welcome, cast dark magic on who? (stop target player)\n");
+    prompt = ui_fmt(ui, "[MAGIC HOUSE] Welcome %s, cast dark magic on whom? (stop target)\n",
+                    ui_player_name(ui, player));
 
     while (1) {
         ret = ui_selection_menu_prompt(ui, prompt, &sel);
