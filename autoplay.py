@@ -8,9 +8,10 @@ import pexpect
 start_prompt = "enter 'start' to play> "
 end_prompt = "Player .* has won"
 
-player_prompt = "\w+> "
-menu_prompt = "input your choice\? "
-bool_prompt = " \(y/n\) "
+# match last pattern in stream
+player_prompt = "\w+> $"
+menu_prompt = "input your choice\? $"
+bool_prompt = " \(y/n\) $"
 
 # from pty_spawn.py:
 # Note this 'child' is global and used in sigwinch_passthrough.
@@ -24,7 +25,11 @@ def sigwinch_passthrough (sig, data):
 
 def terminate(sig, data):
     print("terminate")
-    child.kill(signal.SIGTERM)
+    if child.isalive():
+        child.kill(signal.SIGTERM)
+    else:
+        print("child is dead, exit")
+        sys.exit(1)
 
 child = pexpect.spawn('./monopoly')
 # pty device echos back what we send, only need to log read buffer

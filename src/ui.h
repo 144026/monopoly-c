@@ -5,6 +5,10 @@
 #define MAX_INPUT_LEN 512
 #define INPUT_BUF_SIZE (MAX_INPUT_LEN + 2)
 
+#define MAX_OUT_LEN  512
+#define OUT_BUF_SIZE (MAX_OUT_LEN + 2)
+#define N_OUT_BUF   10
+
 #define FORMAT_BUF_SIZE 512
 #define N_FORMAT_BUF   4
 
@@ -17,11 +21,18 @@ struct ui {
     int out_isatty;
     int lines;
     int cols;
+
     int use_clear;
+    int clear_ctx;
     int use_setwin;
 
     int in_buf_size;
     char *in_buf;
+
+    int out_buf_size;
+    char *out_buf[N_OUT_BUF];
+    int out_idx;
+    int out_offset;
 
     int fmt_buf_size;
     char *fmt_buf[N_FORMAT_BUF];
@@ -51,7 +62,12 @@ int ui_cmd_tokenize(char *cmd, const char *argv[], int n);
 #define __printf(x, y) __attribute__(( format(printf, x, y) ))
 #endif
 
-const char *ui_fmt(struct ui *ui, const char *fmt, ...) __printf(2, 3) ;
+const char *ui_fmt(struct ui *ui, const char *fmt, ...) __printf(2, 3);
+
+/* buffered, no newline */
+int ui_bprints(struct ui *ui, const char *fmt, ...) __printf(2, 3);
+/* buffered, one newline */
+int ui_bprintln(struct ui *ui, const char *fmt, ...) __printf(2, 3);
 
 int ui_input_bool_prompt(struct ui *ui, const char *prompt, int *res);
 int ui_input_int_prompt(struct ui *ui, const char *prompt, const struct range *range, int *res);

@@ -213,7 +213,7 @@ int player_grant_gift_money(struct gift_info *gift, struct game *game, struct pl
     struct ui *ui = &game->ui;
 
     player->asset.n_money += gift->value;
-    fprintf(ui->out, "[GIFT] Acquired bonus cash %d.\n", gift->value);
+    ui_bprintln(ui, "[GIFT] Acquired bonus cash %d.\n", gift->value);
     return 0;
 }
 
@@ -222,7 +222,7 @@ int player_grant_gift_point(struct gift_info *gift, struct game *game, struct pl
     struct ui *ui = &game->ui;
 
     player->asset.n_points += gift->value;
-    fprintf(ui->out, "[GIFT] Acquired bonus points %d.\n", gift->value);
+    ui_bprintln(ui, "[GIFT] Acquired bonus points %d.\n", gift->value);
     return 0;
 }
 
@@ -231,6 +231,6 @@ int player_grant_gift_god(struct gift_info *gift, struct game *game, struct play
     struct ui *ui = &game->ui;
 
     player->buff.n_god_rounds += gift->value;
-    fprintf(ui->out, "[GIFT] God of Wealth be with you in %d rounds.\n", gift->value);
+    ui_bprintln(ui, "[GIFT] God of Wealth be with you in %d rounds.\n", gift->value);
     return 0;
 }
